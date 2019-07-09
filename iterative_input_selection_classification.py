@@ -1,5 +1,6 @@
 import math
 import sys
+import itertools
 import warnings
 from warnings import warn
 
@@ -106,7 +107,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5, global_sample_weights=None, loss="softmax", verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -116,6 +117,7 @@ class IISClassification():
 		self.epsilon = epsilon
 		self.max_number_of_features = max_number_of_features
 		self.siso_ranking_size = siso_ranking_size
+		self.siso_order = siso_order
 		self.loss = loss
 		self.verbose = verbose
 
@@ -214,7 +216,7 @@ class IISClassification():
 				if(self.verbose > 1):
 					print "Evaluating MISO after iteration %02d" % (iteration_number)
 				# The selected feature is stored inside self.all_selected_variables.
-				self.all_selected_variables.append(selected_variable)
+				self.all_selected_variables.extend(selected_variable)
 				# Perform Multiple Input Single Output (MISO) for iteration 1.
 				acc_t_miso = self._miso(X[:, self.all_selected_variables], Y, iteration_number)
 				# Accuracy of selected feature is stored in accuracy_.
@@ -232,11 +234,15 @@ class IISClassification():
 				if(self.verbose > 1):
 					print "Evaluating MISO after iteration %02d" % (iteration_number)
 				# Check if the feature has already been selected i.e. stopping condition 3 as mentioned above.
-				if selected_variable in self.all_selected_variables:
+				#if selected_variable in self.all_selected_variables:
+				if all(x in self.all_selected_variables for x in selected_variable):
 					repeated_variable = True
 				else:
 					# The selected feature is stored inside self.all_selected_variables.
-					self.all_selected_variables.append(selected_variable)
+					for x in selected_variable:
+						if x not in self.all_selected_variables:
+							self.all_selected_variables.extend([x])
+
 					# Perform Multiple Input Single Output (MISO) for subsequent iterations.
 					acc_t_miso = self._miso(X[:, self.all_selected_variables], Y, iteration_number)
 					# Accuracy of selected features is stored in accuracy_.
@@ -300,14 +306,20 @@ class IISClassification():
 		# Get a ranking of features based on the estimator.
 		ranking, self.all_ranking_ = self._input_ranking(X, Y, iteration_number)
 		self.siso_ranking_[(iteration_number-1), :] = ranking
-		acc_t_all = np.zeros((len(ranking), 1))
 		kf = KFold(n_splits=self.number_of_folds, shuffle=True,random_state=275)
-		for idx_1, i in enumerate(ranking):
+
+		# combination of features from the ranking up to siso_order size 
+		combs = []
+		for i in range(self.siso_order):
+			temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
+			combs.extend(temp_comb)
+		acc_t_all = np.zeros((len(combs), 1))
+		for idx_1, i in enumerate(combs):
 			if(self.verbose > 1):
-				print "...Evaluating SISO of input at rank %02d which is %s" % (idx_1+1, self.feature_names[i])
+				print "...Evaluating SISO combination %02d which is %s" % (idx_1+1, str(i))
 			X_temp = X[:, i]
 			n = len(X_temp)
-			X_temp = X_temp.reshape(n, 1)
+			X_temp = X_temp.reshape(n, len(i))
 			count = 1
 			acc_t_folds = np.zeros((self.number_of_folds, 1))
 			# Compute accuracy for each SISO input.
@@ -323,12 +335,13 @@ class IISClassification():
 				count = count + 1
 			acc_t_all[idx_1, :] = np.mean(acc_t_folds)
 			if(self.verbose > 1):
-				print "accuracy for input %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds))
+				print "accuracy for combination %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds))
 		best_acc_t = np.amax(acc_t_all)
 		# Feature with highest accuracy amongst siso ranked features is selected.
-		selected_variable = ranking[np.argmax(acc_t_all)]
+		#selected_variable = ranking[np.argmax(acc_t_all)]
+		selected_variable = combs[np.argmax(acc_t_all)]
 		if(self.verbose > 1):
-			print "Selected variable is %s with accuracy %05f" % (self.feature_names[selected_variable], best_acc_t)
+			print "Selected variable is %s with accuracy %05f" % (str(selected_variable), best_acc_t)
 		return selected_variable, best_acc_t
 
 	def _miso(self, X, Y, iteration_number):
