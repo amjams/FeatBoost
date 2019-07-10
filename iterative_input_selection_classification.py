@@ -56,6 +56,10 @@ class IISClassification():
 			If it takes two values as a list (e.g. [5 10]), it evaluates SISO
 			for 5 random variables selected from the top 10.
 
+		siso_order : int OR list  Optional (default=1)
+			Corresponds to the size of feature combinations evaluated at the SISO
+			step. If int, it's the upper bound. If list, it's [lower,upper]
+
 		global_sample_weights : array, shape = [Y], Optional (default = None)
 			The initial weights of the sample set. The weights are updated in
 			each internal iteration using concepts of AdaBoosting.
@@ -310,9 +314,15 @@ class IISClassification():
 
 		# combination of features from the ranking up to siso_order size 
 		combs = []
-		for i in range(self.siso_order):
-			temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
-			combs.extend(temp_comb)
+		if type(self.siso_order) is int:
+			for i in range(self.siso_order):
+				temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
+				combs.extend(temp_comb)
+		elif type(self.siso_order) is list:
+			for i in range(int(self.siso_order[0])-1,int(self.siso_order[1])):
+				temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
+				combs.extend(temp_comb)
+
 		acc_t_all = np.zeros((len(combs), 1))
 		for idx_1, i in enumerate(combs):
 			if(self.verbose > 1):
