@@ -111,7 +111,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -124,6 +124,7 @@ class IISClassification():
 		self.siso_order = siso_order
 		self.loss = loss
 		self.verbose = verbose
+		self.nostop = nostop
 
 	def fit(self, X, Y):
 		"""
@@ -239,7 +240,7 @@ class IISClassification():
 					print "Evaluating MISO after iteration %02d" % (iteration_number)
 				# Check if the feature has already been selected i.e. stopping condition 3 as mentioned above.
 				#if selected_variable in self.all_selected_variables:
-				if all(x in self.all_selected_variables for x in selected_variable):
+				if all(x in self.all_selected_variables for x in selected_variable) and self.nostop is False:
 					repeated_variable = True
 				else:
 					# The selected feature is stored inside self.all_selected_variables.
