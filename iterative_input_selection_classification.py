@@ -7,7 +7,7 @@ from warnings import warn
 import numpy as np
 
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, f1_score
 
 
 class IISClassification():
@@ -339,7 +339,8 @@ class IISClassification():
 				y_train, y_test = Y[train_index], Y[test_index]
 				self.estimator[1].fit(X_train, np.ravel(y_train), sample_weight=self.global_sample_weights[train_index])
 				yHat_test = self.estimator[1].predict(X_test)
-				acc_t = accuracy_score(y_test, yHat_test) #, sample_weight=self.global_sample_weights[test_index])
+				acc_t = accuracy_score(y_test, yHat_test) #,sample_weight=self.global_sample_weights[test_index])
+				#acc_t = f1_score(y_test, yHat_test)
 				if(self.verbose > 1):
 					print "Fold %02d accuracy = %05f" % (count, acc_t)
 				acc_t_folds[count-1, :] = acc_t
@@ -371,6 +372,7 @@ class IISClassification():
 			self.estimator[2].fit(X_train, np.ravel(y_train), sample_weight=None)
 			yHat_test = self.estimator[2].predict(X_test)
 			acc_t = accuracy_score(y_test, yHat_test)
+			#acc_t = f1_score(y_test, yHat_test)
 			if(self.verbose > 1):
 				print "Fold %02d accuracy = %05f" % (count, acc_t)
 			acc_t_folds[count-1,:] = acc_t
@@ -381,7 +383,7 @@ class IISClassification():
 		yHat_train_full = self.estimator[2].predict(X)
 		if(self.loss == "adaboost"):
 			# Determine the missclassified samples.
-			acc_train_full = accuracy_score(Y, yHat_train_full, sample_weight=self.global_sample_weights)
+			acc_train_full = accuracy_score(Y, yHat_train_full)
 			err = 1-acc_train_full
 			alpha = np.log((1-err)/err) + np.log(self.n_classes_-1)
 			misclass = np.subtract(Y.reshape(len(Y), 1), yHat_train_full.reshape(len(Y), 1))
@@ -425,6 +427,7 @@ class IISClassification():
 			# Apply Softmax for Multi-Class Problems.
 			elif(self.loss == "softmax"):
 				alpha = -np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
+
 			self.global_sample_weights = self.global_sample_weights*alpha
 			self.residual_weights_[(iteration_number-1), :] = self.global_sample_weights
 		return acc_t_miso
