@@ -213,6 +213,15 @@ class IISClassification():
 		self.all_selected_variables = []
 		self.accuracy_ = []
 		repeated_variable = False
+
+		# alpha intialization (for normalizing later)
+		if(self.loss == "adaboost"):
+			self.alpha = np.ones(self.max_number_of_features)
+			self.alpha_abs = np.ones(self.max_number_of_features)
+		elif(self.loss == "binary_crossentropy" or self.loss == "softmax"):
+			self.alpha = np.ones((len(Y),self.max_number_of_features))
+			self.alpha_abs = np.ones((len(Y),self.max_number_of_features))
+
 		while stop_epsilon > self.epsilon and iteration_number <= self.max_number_of_features and repeated_variable is False:
 			if iteration_number == 1:
 				if(self.verbose > 0):
@@ -309,7 +318,7 @@ class IISClassification():
 				tempZero.extend(self.accuracy_)
 				tempDiff = np.diff(tempZero)
 				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
-				
+
 				print "Selected variables so far:"
 				print self.selected_subset_
 				print "Siso ranking at iteration number %d:"%(iteration_number-1)
@@ -455,9 +464,10 @@ class IISClassification():
 				alpha = -(Y * np.log(probability_weight+log_bias) + (1-np.array(Y))*np.log(1-probability_weight+log_bias))
 			# Apply Softmax for Multi-Class Problems.
 			elif(self.loss == "softmax"):
-				alpha = -np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
-
-			self.global_sample_weights = self.global_sample_weights*alpha
+				self.alpha_abs[:,iteration_number] = -np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
+				self.alpha[:,iteration_number] = np.divide(self.alpha_abs[:,iteration_number],self.alpha_abs[:,iteration_number-1])
+			self.global_sample_weights = self.global_sample_weights*self.alpha[:,iteration_number]
+			#self.global_sample_weights = np.ones(np.shape(Y))*self.alpha[:,iteration_number]
 			self.residual_weights_[(iteration_number-1), :] = self.global_sample_weights
 		return acc_t_miso
 
