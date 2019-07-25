@@ -264,6 +264,11 @@ class IISClassification():
 					print "Selection stopped: Maximum number of iteration %02d has been reached." % (self.max_number_of_features)
 				self.stopping_condition_ = "max_number_of_features_reached"
 				self.selected_subset_ = self.all_selected_variables
+				# add the strict subset
+				tempZero = [0]
+				tempZero.extend(self.accuracy_)
+				tempDiff = np.diff(tempZero)
+				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
 			# Stopping Condtion 2 -> epsilon value falls below the threshold.
 			if stop_epsilon <= self.epsilon:
 				if(self.verbose > 0):
@@ -273,6 +278,13 @@ class IISClassification():
 				self.selected_subset_ = self.all_selected_variables[:-1]
 				self.complete_subset_ = self.all_selected_variables[:-1]
 				self.accuracy_ = self.accuracy_[:-1]
+
+				# add the strict subset
+				tempZero = [0]
+				tempZero.extend(self.accuracy_)
+				tempDiff = np.diff(tempZero)
+				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+
 				print "Selected variables so far:"
 				print self.selected_subset_
 				index = 0
@@ -291,6 +303,13 @@ class IISClassification():
 				self.selected_subset_ = self.all_selected_variables[:]
 				self.complete_subset_ = self.all_selected_variables[:]
 				self.accuracy_ = self.accuracy_
+
+				# add the strict subset
+				tempZero = [0]
+				tempZero.extend(self.accuracy_)
+				tempDiff = np.diff(tempZero)
+				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+				
 				print "Selected variables so far:"
 				print self.selected_subset_
 				print "Siso ranking at iteration number %d:"%(iteration_number-1)
@@ -347,7 +366,7 @@ class IISClassification():
 					self.estimator[1].fit(X_train, np.ravel(y_train))
 				else:
 					self.estimator[1].fit(X_train, np.ravel(y_train),sample_weight=self.global_sample_weights[train_index])
-					
+
 				yHat_test = self.estimator[1].predict(X_test)
 				acc_t = accuracy_score(y_test, yHat_test) #,sample_weight=self.global_sample_weights[test_index])
 				#acc_t = f1_score(y_test, yHat_test)
