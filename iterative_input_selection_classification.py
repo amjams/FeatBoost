@@ -407,7 +407,7 @@ class IISClassification():
 		for train_index, test_index in kf.split(X):
 			X_train, X_test = X[train_index], X[test_index]
 			y_train, y_test = Y[train_index], Y[test_index]
-			self.estimator[2].fit(X_train, np.ravel(y_train), sample_weight=None)
+			self.estimator[2].fit(X_train, np.ravel(y_train))
 			yHat_test = self.estimator[2].predict(X_test)
 			acc_t = accuracy_score(y_test, yHat_test)
 			#acc_t = f1_score(y_test, yHat_test)
@@ -417,7 +417,7 @@ class IISClassification():
 			count = count + 1
 		acc_t_miso = np.mean(acc_t_folds)
 		# Calculate the residual weights from fitting on the entire dataset.
-		self.estimator[2].fit(X, np.ravel(Y), sample_weight=None)  #sample_weight=self.global_sample_weights)
+		self.estimator[2].fit(X, np.ravel(Y))
 		yHat_train_full = self.estimator[2].predict(X)
 		if(self.loss == "adaboost"):
 			# Determine the missclassified samples.
