@@ -111,7 +111,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,metric='acc',verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -126,6 +126,7 @@ class IISClassification():
 		self.verbose = verbose
 		self.nostop = nostop
 		self.slow_mode = slow_mode
+		self.metric = metric
 
 	def fit(self, X, Y):
 		"""
@@ -371,14 +372,18 @@ class IISClassification():
 				X_train, X_test = X_temp[train_index], X_temp[test_index]
 				y_train, y_test = Y[train_index], Y[test_index]
 
+				# fit model according to mode
 				if self.slow_mode is True:
 					self.estimator[1].fit(X_train, np.ravel(y_train))
 				else:
 					self.estimator[1].fit(X_train, np.ravel(y_train),sample_weight=self.global_sample_weights[train_index])
 
 				yHat_test = self.estimator[1].predict(X_test)
-				acc_t = accuracy_score(y_test, yHat_test) #,sample_weight=self.global_sample_weights[test_index])
-				#acc_t = f1_score(y_test, yHat_test)
+				# calculate the required metric
+				if(self.metric == 'acc'):
+					acc_t = accuracy_score(y_test, yHat_test)
+				elif(self.metric == 'acc'):
+					acc_t = f1_score(y_test, yHat_test,average='weighted')
 				if(self.verbose > 1):
 					print "Fold %02d accuracy = %05f" % (count, acc_t)
 				acc_t_folds[count-1, :] = acc_t
@@ -409,8 +414,12 @@ class IISClassification():
 			y_train, y_test = Y[train_index], Y[test_index]
 			self.estimator[2].fit(X_train, np.ravel(y_train))
 			yHat_test = self.estimator[2].predict(X_test)
-			acc_t = accuracy_score(y_test, yHat_test)
-			#acc_t = f1_score(y_test, yHat_test)
+			# find performance based on selected metric
+			if(self.metric == 'acc'):
+				acc_t = accuracy_score(y_test, yHat_test)
+			elif(self.metric == 'f1'):
+				acc_t = f1_score(y_test, yHat_test,average=weighted)
+
 			if(self.verbose > 1):
 				print "Fold %02d accuracy = %05f" % (count, acc_t)
 			acc_t_folds[count-1,:] = acc_t
