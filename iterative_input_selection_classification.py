@@ -111,7 +111,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,metric='acc',verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,metric='acc',learning_rate=1,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -127,6 +127,7 @@ class IISClassification():
 		self.nostop = nostop
 		self.slow_mode = slow_mode
 		self.metric = metric
+		self.learning_rate = learning_rate
 
 	def fit(self, X, Y):
 		"""
@@ -382,7 +383,7 @@ class IISClassification():
 				# calculate the required metric
 				if(self.metric == 'acc'):
 					acc_t = accuracy_score(y_test, yHat_test)
-				elif(self.metric == 'acc'):
+				elif(self.metric == 'f1'):
 					acc_t = f1_score(y_test, yHat_test,average='weighted')
 				if(self.verbose > 1):
 					print "Fold %02d accuracy = %05f" % (count, acc_t)
@@ -418,7 +419,7 @@ class IISClassification():
 			if(self.metric == 'acc'):
 				acc_t = accuracy_score(y_test, yHat_test)
 			elif(self.metric == 'f1'):
-				acc_t = f1_score(y_test, yHat_test,average=weighted)
+				acc_t = f1_score(y_test, yHat_test,average='weighted')
 
 			if(self.verbose > 1):
 				print "Fold %02d accuracy = %05f" % (count, acc_t)
@@ -473,7 +474,7 @@ class IISClassification():
 				alpha = -(Y * np.log(probability_weight+log_bias) + (1-np.array(Y))*np.log(1-probability_weight+log_bias))
 			# Apply Softmax for Multi-Class Problems.
 			elif(self.loss == "softmax"):
-				self.alpha_abs[:,iteration_number] = -np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
+				self.alpha_abs[:,iteration_number] = -self.learning_rate*np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
 				self.alpha[:,iteration_number] = np.divide(self.alpha_abs[:,iteration_number],self.alpha_abs[:,iteration_number-1])
 			self.global_sample_weights = self.global_sample_weights*self.alpha[:,iteration_number]
 			#self.global_sample_weights = np.ones(np.shape(Y))*self.alpha[:,iteration_number]
