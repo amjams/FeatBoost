@@ -303,8 +303,8 @@ class IISClassification():
 					if(self.all_ranking_[index] not in self.complete_subset_):
 						self.complete_subset_.append(self.all_ranking_[index])
 					index = index + 1
-				print "The Complete Subset is:"
-				print self.complete_subset_
+				#print "The Complete Subset is:"
+				#print self.complete_subset_
 			# Stopping Condtion 3 -> A specific feature has been already selected previously.
 			if repeated_variable:
 				if(self.verbose > 0):
@@ -321,10 +321,10 @@ class IISClassification():
 				tempDiff = np.diff(tempZero)
 				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
 
-				print "Selected variables so far:"
-				print self.selected_subset_
-				print "Siso ranking at iteration number %d:"%(iteration_number-1)
-				print self.all_ranking_
+				#print "Selected variables so far:"
+				#print self.selected_subset_
+				#print "Siso ranking at iteration number %d:"%(iteration_number-1)
+				#print self.all_ranking_
 				index = 0
 				while(len(self.complete_subset_) < self.max_number_of_features):
 					if(self.all_ranking_[index] not in self.complete_subset_):
