@@ -330,8 +330,8 @@ class IISClassification():
 					if(self.all_ranking_[index] not in self.complete_subset_):
 						self.complete_subset_.append(self.all_ranking_[index])
 					index = index + 1
-				print "The Complete Subset is:"
-				print self.complete_subset_
+				#print "The Complete Subset is:"
+				#print self.complete_subset_
 
 	def _siso(self, X, Y, iteration_number):
 		"""
