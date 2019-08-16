@@ -517,7 +517,7 @@ class IISClassification():
 				feature_rank = feature_rank[:-1*self.siso_ranking_size[1]-1:-1]
 				return np.random.choice(feature_rank, self.siso_ranking_size[0], replace=False), all_ranking
 		else:
-			self.estimator[0].fit(X, np.ravel(Y), sample_weight=self.global_sample_weights)
+			self.estimator[0].fit(np.nan_to_num(X), np.nan_to_num(np.ravel(Y)), sample_weight=np.nan_to_num(self.global_sample_weights))
 			feature_importance = self.estimator[0].feature_importances_
 			feature_rank = np.argsort(feature_importance)
 			all_ranking = feature_rank[::-1]
