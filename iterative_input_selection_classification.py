@@ -1,3 +1,4 @@
+from __future__ import division
 import math
 import sys
 import itertools
@@ -111,7 +112,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,metric='acc',learning_rate=1,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -128,6 +129,7 @@ class IISClassification():
 		self.slow_mode = slow_mode
 		self.metric = metric
 		self.learning_rate = learning_rate
+		self.xgb_importance = xgb_importance
 
 	def fit(self, X, Y):
 		"""
@@ -433,7 +435,13 @@ class IISClassification():
 			# Determine the missclassified samples.
 			acc_train_full = accuracy_score(Y, yHat_train_full)
 			err = 1-acc_train_full
-			alpha = np.log((1-err)/err) + np.log(self.n_classes_-1)
+			self.alpha_abs[iteration_number] = np.log((1-err)/err) + np.log(self.n_classes_-1)
+			self.alpha[iteration_number] = np.divide(self.alpha_abs[iteration_number],self.alpha_abs[iteration_number-1])
+			#print "Train error = %02f" % err
+			#print "Alpha_abs = %02f" % self.alpha_abs[iteration_number]
+			#print "Alpha = %02f" % self.alpha[iteration_number]
+			#print "Exp(Alpha_abs) = %02f" % np.exp(self.alpha_abs[iteration_number])
+			#print "Exp(Alpha) = %02f" % np.exp(self.alpha[iteration_number])
 			misclass = np.subtract(Y.reshape(len(Y), 1), yHat_train_full.reshape(len(Y), 1))
 			misclass_idx = np.nonzero(misclass)
 			misclass_idx = misclass_idx[0]
@@ -441,7 +449,13 @@ class IISClassification():
 			corclass_idx = np.nonzero(misclass == 0)
 			corclass_idx = corclass_idx[0]
 			# Weighting up/down misclassified/classified samples.
-			self.global_sample_weights[misclass_idx] = self.global_sample_weights[misclass_idx]*np.exp(alpha)
+			self.global_sample_weights[misclass_idx] = self.global_sample_weights[misclass_idx]*np.exp(self.alpha[iteration_number])
+
+			# re-normalize
+			self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights) 
+			self.global_sample_weights = self.global_sample_weights/np.max(self.global_sample_weights)
+			print "mean of weights = %02f" % np.mean(self.global_sample_weights)
+			print self.global_sample_weights[0:10]
 			if(iteration_number == 1):
 				self.residual_weights_[(iteration_number-1), misclass_idx] = self.residual_weights_[(iteration_number-1), misclass_idx] + 1
 			else:
@@ -490,7 +504,7 @@ class IISClassification():
 		check_estimator = str(self.estimator[0])
 		if("XGBClassifier" in check_estimator):
 			self.estimator[0].fit(X, np.ravel(Y), sample_weight=self.global_sample_weights)
-			fscore = self.estimator[0].get_booster().get_score(importance_type='gain')
+			fscore = self.estimator[0].get_booster().get_score(importance_type=self.xgb_importance)
 			feature_importance = np.zeros(X.shape[1])
 			for k, v in fscore.iteritems():
 				feature_importance[int(k[1:])] = v
