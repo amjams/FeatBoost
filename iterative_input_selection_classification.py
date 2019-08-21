@@ -1,4 +1,4 @@
-from __future__ import division
+
 import math
 import sys
 import itertools
@@ -112,7 +112,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -130,6 +130,7 @@ class IISClassification():
 		self.metric = metric
 		self.learning_rate = learning_rate
 		self.xgb_importance = xgb_importance
+		self.reset = reset
 
 	def fit(self, X, Y):
 		"""
@@ -226,14 +227,16 @@ class IISClassification():
 			self.alpha = np.ones((len(Y),self.max_number_of_features))
 			self.alpha_abs = np.ones((len(Y),self.max_number_of_features))
 
+		# loop counter for reset
+		reset_count = 0
 		while stop_epsilon > self.epsilon and iteration_number <= self.max_number_of_features and repeated_variable is False:
 			if iteration_number == 1:
 				if(self.verbose > 0):
-					print "\n\n\n\n\n\nRanking features iteration %02d" % (iteration_number)
+					print("\n\n\n\n\n\nRanking features iteration %02d" % (iteration_number))
 				# Perform Single Input Single Output (SISO) for iteration 1.
 				selected_variable,best_acc_t = self._siso(X,Y,iteration_number)
 				if(self.verbose > 1):
-					print "Evaluating MISO after iteration %02d" % (iteration_number)
+					print("Evaluating MISO after iteration %02d" % (iteration_number))
 				# The selected feature is stored inside self.all_selected_variables.
 				self.all_selected_variables.extend(selected_variable)
 				# Perform Multiple Input Single Output (MISO) for iteration 1.
@@ -241,17 +244,21 @@ class IISClassification():
 				# Accuracy of selected feature is stored in accuracy_.
 				self.accuracy_.append(acc_t_miso)
 				if(self.verbose > 1):
-					print "::::::::::::::::::::accuracy of MISO after iteration %02d is %05f" % (iteration_number,acc_t_miso)
+					print("::::::::::::::::::::accuracy of MISO after iteration %02d is %05f" % (iteration_number,acc_t_miso))
 				iteration_number = iteration_number + 1
 			else:
+				if reset_count > 1:
+					self.reset = False
+					print("Infinite loop: No more resets this time!")
+					reset_count = 0  # reset the reset counter!
 				temp_str = [self.feature_names[i] for i in self.all_selected_variables]
 				if(self.verbose > 0):
-					print "\n\n\n\n\nselected variable thus far:\n%s" % "\n".join(temp_str)
-					print "Ranking features iteration %02d" % (iteration_number)
+					print("\n\n\n\n\nselected variable thus far:\n%s" % "\n".join(temp_str))
+					print("Ranking features iteration %02d" % (iteration_number))
 				# Perform Single Input Single Output (SISO) for subsequent iterations.
 				selected_variable,best_acc_t = self._siso(X, Y, iteration_number)
 				if(self.verbose > 1):
-					print "Evaluating MISO after iteration %02d" % (iteration_number)
+					print("Evaluating MISO after iteration %02d" % (iteration_number))
 				# Check if the feature has already been selected i.e. stopping condition 3 as mentioned above.
 				#if selected_variable in self.all_selected_variables:
 				if all(x in self.all_selected_variables for x in selected_variable) and self.nostop is False:
@@ -269,12 +276,16 @@ class IISClassification():
 					# stop_epsilon makes sure the accuracy doesn't fall below the threshold i.e stopping condition 2 as mentioned above.
 					stop_epsilon = self.accuracy_[iteration_number-1] - self.accuracy_[iteration_number-2]
 					if(self.verbose > 1):
-						print "::::::::::::::::::::accuracy of MISO after iteration %02d is %05f" % (iteration_number, acc_t_miso)
+						print("::::::::::::::::::::accuracy of MISO after iteration %02d is %05f" % (iteration_number, acc_t_miso))
+					if(reset_count > 0 and stop_epsilon > self.epsilon):
+						reset_count = 0  # reset the reset counter!
+						print("CONGRATURLATIONS: A reset was successful! The reset counter has been reset.")
+						
 					iteration_number = iteration_number + 1
 			# Stopping Condtion 1 -> Maximum number of features reached.
 			if iteration_number > self.max_number_of_features:
 				if(self.verbose > 0):
-					print "Selection stopped: Maximum number of iteration %02d has been reached." % (self.max_number_of_features)
+					print("Selection stopped: Maximum number of iteration %02d has been reached." % (self.max_number_of_features))
 				self.stopping_condition_ = "max_number_of_features_reached"
 				self.selected_subset_ = self.all_selected_variables
 				# add the strict subset
@@ -284,56 +295,72 @@ class IISClassification():
 				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
 			# Stopping Condtion 2 -> epsilon value falls below the threshold.
 			if stop_epsilon <= self.epsilon:
-				if(self.verbose > 0):
-					print "Selection stopped: Tolerance has been reached."
-				print "Stopping Condition triggered at iteration number: %d" %(iteration_number-1)
-				self.stopping_condition_ = "tolerance_reached"
-				self.selected_subset_ = self.all_selected_variables[:-1]
-				self.complete_subset_ = self.all_selected_variables[:-1]
-				self.accuracy_ = self.accuracy_[:-1]
+				if self.reset is False:
+					if(self.verbose > 0):
+						print("Selection stopped: Tolerance has been reached.")
+					print("Stopping Condition triggered at iteration number: %d" %(iteration_number-1))
+					self.stopping_condition_ = "tolerance_reached"
+					self.selected_subset_ = self.all_selected_variables[:-1]
+					self.complete_subset_ = self.all_selected_variables[:-1]
+					self.accuracy_ = self.accuracy_[:-1]
 
-				# add the strict subset
-				tempZero = [0]
-				tempZero.extend(self.accuracy_)
-				tempDiff = np.diff(tempZero)
-				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+					print("Selected variables so far:")
+					print(self.selected_subset_)
+					index = 0
+					while(len(self.complete_subset_) < self.max_number_of_features):
+						if(self.all_ranking_[index] not in self.complete_subset_):
+							self.complete_subset_.append(self.all_ranking_[index])
+						index = index + 1
 
-				print "Selected variables so far:"
-				print self.selected_subset_
-				index = 0
-				while(len(self.complete_subset_) < self.max_number_of_features):
-					if(self.all_ranking_[index] not in self.complete_subset_):
-						self.complete_subset_.append(self.all_ranking_[index])
-					index = index + 1
-				#print "The Complete Subset is:"
-				#print self.complete_subset_
+					# add the strict subset
+					tempZero = [0]
+					tempZero.extend(self.accuracy_)
+					tempDiff = np.diff(tempZero)
+					self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+
+				elif self.reset is True:
+					# re-set the sample weights and epsilon
+					print("\n\nATTENTION: Reset occured because of tolerance reached!")
+					stop_epsilon = self.epsilon+1  
+					if reset_count == 0:
+						self.global_sample_weights = np.ones(np.shape(Y))
+					elif reset_count ==1:
+						self.global_sample_weights = np.random.randn(len(Y))
+						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
+					reset_count += 1
+
 			# Stopping Condtion 3 -> A specific feature has been already selected previously.
 			if repeated_variable:
-				if(self.verbose > 0):
-					print "Selection stopped: A variable has been selected twice."
-				print "Stopping Condition triggered at iteration number: %d" %(iteration_number-1)
-				self.stopping_condition_ = "variable_selected_twice"
-				self.selected_subset_ = self.all_selected_variables[:]
-				self.complete_subset_ = self.all_selected_variables[:]
-				self.accuracy_ = self.accuracy_
+				if self.reset is False:
+					if(self.verbose > 0):
+						print("Selection stopped: A variable has been selected twice.")
+					print("Stopping Condition triggered at iteration number: %d" %(iteration_number-1))
+					self.stopping_condition_ = "variable_selected_twice"
+					self.selected_subset_ = self.all_selected_variables[:]
+					self.complete_subset_ = self.all_selected_variables[:]
+					self.accuracy_ = self.accuracy_
 
-				# add the strict subset
-				tempZero = [0]
-				tempZero.extend(self.accuracy_)
-				tempDiff = np.diff(tempZero)
-				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+					# add the strict subset
+					tempZero = [0]
+					tempZero.extend(self.accuracy_)
+					tempDiff = np.diff(tempZero)
+					self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+					index = 0
+					while(len(self.complete_subset_) < self.max_number_of_features):
+						if(self.all_ranking_[index] not in self.complete_subset_):
+							self.complete_subset_.append(self.all_ranking_[index])
+						index = index + 1
+				elif self.reset is True:
+					# re-set the sample weights and epsilon
+					print("\n\nATTENTION: Reset occured because of selected twice!")
+					repeated_variable = False
+					if reset_count == 0:
+						self.global_sample_weights = np.ones(np.shape(Y))
+					elif reset_count ==1:
+						self.global_sample_weights = np.random.randn(len(Y))
+						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
+					reset_count += 1
 
-				#print "Selected variables so far:"
-				#print self.selected_subset_
-				#print "Siso ranking at iteration number %d:"%(iteration_number-1)
-				#print self.all_ranking_
-				index = 0
-				while(len(self.complete_subset_) < self.max_number_of_features):
-					if(self.all_ranking_[index] not in self.complete_subset_):
-						self.complete_subset_.append(self.all_ranking_[index])
-					index = index + 1
-				#print "The Complete Subset is:"
-				#print self.complete_subset_
 
 	def _siso(self, X, Y, iteration_number):
 		"""
@@ -360,7 +387,7 @@ class IISClassification():
 		acc_t_all = np.zeros((len(combs), 1))
 		for idx_1, i in enumerate(combs):
 			if(self.verbose > 1):
-				print "...Evaluating SISO combination %02d which is %s" % (idx_1+1, str(i))
+				print("...Evaluating SISO combination %02d which is %s" % (idx_1+1, str(i)))
 			X_temp = X[:, i]
 			n = len(X_temp)
 			X_temp = X_temp.reshape(n, len(i))
@@ -388,18 +415,18 @@ class IISClassification():
 				elif(self.metric == 'f1'):
 					acc_t = f1_score(y_test, yHat_test,average='weighted')
 				if(self.verbose > 1):
-					print "Fold %02d accuracy = %05f" % (count, acc_t)
+					print("Fold %02d accuracy = %05f" % (count, acc_t))
 				acc_t_folds[count-1, :] = acc_t
 				count = count + 1
 			acc_t_all[idx_1, :] = np.mean(acc_t_folds)
 			if(self.verbose > 1):
-				print "accuracy for combination %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds))
+				print("accuracy for combination %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds)))
 		best_acc_t = np.amax(acc_t_all)
 		# Feature with highest accuracy amongst siso ranked features is selected.
 		#selected_variable = ranking[np.argmax(acc_t_all)]
 		selected_variable = combs[np.argmax(acc_t_all)]
 		if(self.verbose > 1):
-			print "Selected variable is %s with accuracy %05f" % (str(selected_variable), best_acc_t)
+			print("Selected variable is %s with accuracy %05f" % (str(selected_variable), best_acc_t))
 		return selected_variable, best_acc_t
 
 	def _miso(self, X, Y, iteration_number):
@@ -415,8 +442,8 @@ class IISClassification():
 		for train_index, test_index in kf.split(X):
 			X_train, X_test = X[train_index], X[test_index]
 			y_train, y_test = Y[train_index], Y[test_index]
-			self.estimator[2].fit(X_train, np.ravel(y_train))
-			yHat_test = self.estimator[2].predict(X_test)
+			self.estimator[1].fit(X_train, np.ravel(y_train))  # changed estimator!
+			yHat_test = self.estimator[1].predict(X_test)
 			# find performance based on selected metric
 			if(self.metric == 'acc'):
 				acc_t = accuracy_score(y_test, yHat_test)
@@ -424,7 +451,7 @@ class IISClassification():
 				acc_t = f1_score(y_test, yHat_test,average='weighted')
 
 			if(self.verbose > 1):
-				print "Fold %02d accuracy = %05f" % (count, acc_t)
+				print("Fold %02d accuracy = %05f" % (count, acc_t))
 			acc_t_folds[count-1,:] = acc_t
 			count = count + 1
 		acc_t_miso = np.mean(acc_t_folds)
@@ -437,11 +464,6 @@ class IISClassification():
 			err = 1-acc_train_full
 			self.alpha_abs[iteration_number] = np.log((1-err)/err) + np.log(self.n_classes_-1)
 			self.alpha[iteration_number] = np.divide(self.alpha_abs[iteration_number],self.alpha_abs[iteration_number-1])
-			#print "Train error = %02f" % err
-			#print "Alpha_abs = %02f" % self.alpha_abs[iteration_number]
-			#print "Alpha = %02f" % self.alpha[iteration_number]
-			#print "Exp(Alpha_abs) = %02f" % np.exp(self.alpha_abs[iteration_number])
-			#print "Exp(Alpha) = %02f" % np.exp(self.alpha[iteration_number])
 			misclass = np.subtract(Y.reshape(len(Y), 1), yHat_train_full.reshape(len(Y), 1))
 			misclass_idx = np.nonzero(misclass)
 			misclass_idx = misclass_idx[0]
@@ -452,10 +474,9 @@ class IISClassification():
 			self.global_sample_weights[misclass_idx] = self.global_sample_weights[misclass_idx]*np.exp(self.alpha[iteration_number])
 
 			# re-normalize
-			self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights) 
-			self.global_sample_weights = self.global_sample_weights/np.max(self.global_sample_weights)
-			print "mean of weights = %02f" % np.mean(self.global_sample_weights)
-			print self.global_sample_weights[0:10]
+			self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
+			print("mean of weights = %02f" % np.mean(self.global_sample_weights))
+			print(self.global_sample_weights[0:10])
 			if(iteration_number == 1):
 				self.residual_weights_[(iteration_number-1), misclass_idx] = self.residual_weights_[(iteration_number-1), misclass_idx] + 1
 			else:
@@ -491,6 +512,8 @@ class IISClassification():
 				self.alpha_abs[:,iteration_number] = -self.learning_rate*np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
 				self.alpha[:,iteration_number] = np.divide(self.alpha_abs[:,iteration_number],self.alpha_abs[:,iteration_number-1])
 			self.global_sample_weights = self.global_sample_weights*self.alpha[:,iteration_number]
+			# re-normalize
+			self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
 			#self.global_sample_weights = np.ones(np.shape(Y))*self.alpha[:,iteration_number]
 			self.residual_weights_[(iteration_number-1), :] = self.global_sample_weights
 		return acc_t_miso
@@ -506,17 +529,17 @@ class IISClassification():
 			self.estimator[0].fit(X, np.ravel(Y), sample_weight=self.global_sample_weights)
 			fscore = self.estimator[0].get_booster().get_score(importance_type=self.xgb_importance)
 			feature_importance = np.zeros(X.shape[1])
-			for k, v in fscore.iteritems():
+			for k, v in fscore.items():
 				feature_importance[int(k[1:])] = v
 			feature_rank = np.argsort(feature_importance)
 			all_ranking = feature_rank[::-1]
 			if(self.verbose > 1):
-				print "feature importances of all available feature:"
+				print("feature importances of all available feature:")
 			count = 0
 			if type(self.siso_ranking_size) is int:
 				for i in range(-1, -1*self.siso_ranking_size-1, -1):
 					if(self.verbose > 1):
-						print "%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]])
+						print("%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]]))
 					count = count + 1
 				# Return the 'siso_ranking_size' ranked features to perform SISO.
 				return feature_rank[:-1*self.siso_ranking_size-1:-1], all_ranking
@@ -525,7 +548,7 @@ class IISClassification():
 				assert len(self.siso_ranking_size) == 2, ("siso_ranking_size of list type is of incompatible format. Please enter a list of the following type: \n siso_ranking_size=[5, 10] \n Read documentation for more details.")
 				for i in range(-1, -1*self.siso_ranking_size[1]-1, -1):
 					if(self.verbose > 1):
-						print "%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]])
+						print("%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]]))
 					count = count + 1
 				# Return the 'siso_ranking_size' ranked features to perform SISO.
 				feature_rank = feature_rank[:-1*self.siso_ranking_size[1]-1:-1]
@@ -536,17 +559,17 @@ class IISClassification():
 			feature_rank = np.argsort(feature_importance)
 			all_ranking = feature_rank[::-1]
 			if(self.verbose > 1):
-				print "feature importances of all available feature:"
+				print("feature importances of all available feature:")
 			if type(self.siso_ranking_size) is int:
 				for i in range(-1, -1*self.siso_ranking_size-1, -1):
 					if(self.verbose > 1):
-						print "%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]])
+						print("%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]]))
 				return feature_rank[:-1*self.siso_ranking_size-1:-1], all_ranking
 			elif type(self.siso_ranking_size) is list:
 				assert len(self.siso_ranking_size) == 2, ("/* SISO CONDITION */")
 				for i in range(-1, -1*self.siso_ranking_size[1]-1, -1):
 					if(self.verbose > 1):
-						print "%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]])
+						print("%s   %05f" % (self.feature_names[feature_rank[i]], feature_importance[feature_rank[i]]))
 				feature_rank = feature_rank[:-1*self.siso_ranking_size[1]-1:-1]
 				return np.random.choice(feature_rank, self.siso_ranking_size[0], replace=False), all_ranking
 
