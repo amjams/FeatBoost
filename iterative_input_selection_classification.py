@@ -7,7 +7,7 @@ from warnings import warn
 
 import numpy as np
 
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, cross_val_predict
 from sklearn.metrics import accuracy_score, f1_score
 
 
@@ -112,7 +112,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -131,6 +131,7 @@ class IISClassification():
 		self.learning_rate = learning_rate
 		self.xgb_importance = xgb_importance
 		self.reset = reset
+		self.cross_val = cross_val
 
 	def fit(self, X, Y):
 		"""
@@ -492,7 +493,10 @@ class IISClassification():
 			# Gets all the labels.
 			labels = np.unique(np.ravel(Y))
 			Y_class = np.zeros((len(Y),len(labels)))
-			prediction_probabiltiy = self.estimator[2].predict_proba(X)
+			if self.cross_val is False:
+				prediction_probabiltiy = self.estimator[2].predict_proba(X)
+			else:
+				prediction_probabiltiy = cross_val_predict(self.estimator[2], X, np.ravel(Y), cv=kf, method='predict_proba')
 			probability_weight = np.zeros(np.shape(Y))
 			# Generates One-Hot encodings for Multi-Class Problems or Assigns 0/1
 			#value for binary classification problems.
