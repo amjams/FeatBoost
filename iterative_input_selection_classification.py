@@ -307,11 +307,11 @@ class IISClassification():
 
 					print("Selected variables so far:")
 					print(self.selected_subset_)
-					index = 0
-					while(len(self.complete_subset_) < self.max_number_of_features):
-						if(self.all_ranking_[index] not in self.complete_subset_):
-							self.complete_subset_.append(self.all_ranking_[index])
-						index = index + 1
+					#index = 0
+					#while(len(self.complete_subset_) < self.max_number_of_features):
+					#	if(self.all_ranking_[index] not in self.complete_subset_):
+					#		self.complete_subset_.append(self.all_ranking_[index])
+					#	index = index + 1
 
 					# add the strict subset
 					tempZero = [0]
@@ -346,11 +346,11 @@ class IISClassification():
 					tempZero.extend(self.accuracy_)
 					tempDiff = np.diff(tempZero)
 					self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
-					index = 0
-					while(len(self.complete_subset_) < self.max_number_of_features):
-						if(self.all_ranking_[index] not in self.complete_subset_):
-							self.complete_subset_.append(self.all_ranking_[index])
-						index = index + 1
+					#index = 0
+					#while(len(self.complete_subset_) < self.max_number_of_features):
+					#	if(self.all_ranking_[index] not in self.complete_subset_):
+					#		self.complete_subset_.append(self.all_ranking_[index])
+					#	index = index + 1
 				elif self.reset is True:
 					# re-set the sample weights and epsilon
 					print("\n\nATTENTION: Reset occured because of selected twice!")
