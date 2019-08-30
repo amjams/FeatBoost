@@ -112,7 +112,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", best_min = False,reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -132,6 +132,7 @@ class IISClassification():
 		self.xgb_importance = xgb_importance
 		self.reset = reset
 		self.cross_val = cross_val
+		self.best_min = best_min
 
 	def fit(self, X, Y):
 		"""
@@ -289,11 +290,7 @@ class IISClassification():
 					print("Selection stopped: Maximum number of iteration %02d has been reached." % (self.max_number_of_features))
 				self.stopping_condition_ = "max_number_of_features_reached"
 				self.selected_subset_ = self.all_selected_variables
-				# add the strict subset
-				tempZero = [0]
-				tempZero.extend(self.accuracy_)
-				tempDiff = np.diff(tempZero)
-				self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+
 			# Stopping Condtion 2 -> epsilon value falls below the threshold.
 			if stop_epsilon <= self.epsilon:
 				if self.reset is False:
@@ -313,11 +310,6 @@ class IISClassification():
 					#		self.complete_subset_.append(self.all_ranking_[index])
 					#	index = index + 1
 
-					# add the strict subset
-					tempZero = [0]
-					tempZero.extend(self.accuracy_)
-					tempDiff = np.diff(tempZero)
-					self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
 
 				elif self.reset is True:
 					# re-set the sample weights and epsilon
@@ -330,6 +322,11 @@ class IISClassification():
 						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
 					reset_count += 1
 
+					# undoing the iteration
+					iteration_number = iteration_number - 1
+					self.all_selected_variables = self.all_selected_variables[:-1]
+					self.accuracy_ = self.accuracy_[:-1]
+
 			# Stopping Condtion 3 -> A specific feature has been already selected previously.
 			if repeated_variable:
 				if self.reset is False:
@@ -341,11 +338,7 @@ class IISClassification():
 					self.complete_subset_ = self.all_selected_variables[:]
 					self.accuracy_ = self.accuracy_
 
-					# add the strict subset
-					tempZero = [0]
-					tempZero.extend(self.accuracy_)
-					tempDiff = np.diff(tempZero)
-					self.strict_subset_ = list(np.array(self.selected_subset_)[tempDiff>0])
+
 					#index = 0
 					#while(len(self.complete_subset_) < self.max_number_of_features):
 					#	if(self.all_ranking_[index] not in self.complete_subset_):
@@ -361,6 +354,11 @@ class IISClassification():
 						self.global_sample_weights = np.random.randn(len(Y))
 						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
 					reset_count += 1
+					
+					# undoing the iteration
+					iteration_number = iteration_number - 1
+					self.all_selected_variables= self.all_selected_variables[:-1]
+					self.accuracy_ = self.accuracy_[:-1]
 
 
 	def _siso(self, X, Y, iteration_number):
@@ -422,10 +420,28 @@ class IISClassification():
 			acc_t_all[idx_1, :] = np.mean(acc_t_folds)
 			if(self.verbose > 1):
 				print("accuracy for combination %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds)))
-		best_acc_t = np.amax(acc_t_all)
-		# Feature with highest accuracy amongst siso ranked features is selected.
-		#selected_variable = ranking[np.argmax(acc_t_all)]
-		selected_variable = combs[np.argmax(acc_t_all)]
+		if self.best_min is False:
+			best_acc_t = np.amax(acc_t_all)
+			selected_variable = combs[np.argmax(acc_t_all)]
+		else:
+			# MINIMUM POSTIVE FEATURE
+			if iteration_number == 1:
+				limit = 0
+			else:
+				limit = self.accuracy_[iteration_number-2]
+			acc_arr = np.array(acc_t_all)
+			valid_idx = np.where(acc_arr > limit)[0]
+			print(valid_idx)
+			if len(valid_idx)==0:
+				print("Empty")
+				best_acc_t = np.amax(acc_t_all)
+				selected_variable = combs[np.argmax(acc_t_all)]
+			elif len(valid_idx)>0:
+				print("Not empty!")
+				best_min_idx = valid_idx[acc_arr[valid_idx].argmin()]
+				best_acc_t = acc_t_all[best_min_idx]
+				selected_variable = combs[best_min_idx]
+
 		if(self.verbose > 1):
 			print("Selected variable is %s with accuracy %05f" % (str(selected_variable), best_acc_t))
 		return selected_variable, best_acc_t
