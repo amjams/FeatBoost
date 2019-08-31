@@ -384,6 +384,7 @@ class IISClassification():
 				combs.extend(temp_comb)
 
 		acc_t_all = np.zeros((len(combs), 1))
+		std_t_all = np.zeros((len(combs), 1))
 		for idx_1, i in enumerate(combs):
 			if(self.verbose > 1):
 				print("...Evaluating SISO combination %02d which is %s" % (idx_1+1, str(i)))
@@ -418,11 +419,14 @@ class IISClassification():
 				acc_t_folds[count-1, :] = acc_t
 				count = count + 1
 			acc_t_all[idx_1, :] = np.mean(acc_t_folds)
+			std_t_all[idx_1, :] = np.std(acc_t_folds)
 			if(self.verbose > 1):
 				print("accuracy for combination %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds)))
 		if self.best_min is False:
+			# regular
 			best_acc_t = np.amax(acc_t_all)
 			selected_variable = combs[np.argmax(acc_t_all)]
+
 		else:
 			# MINIMUM POSTIVE FEATURE
 			if iteration_number == 1:
@@ -430,6 +434,7 @@ class IISClassification():
 			else:
 				limit = self.accuracy_[iteration_number-2]
 			acc_arr = np.array(acc_t_all)
+			std_arr = np.array(std_t_all)
 			valid_idx = np.where(acc_arr > limit)[0]
 			print(valid_idx)
 			if len(valid_idx)==0:
@@ -438,7 +443,7 @@ class IISClassification():
 				selected_variable = combs[np.argmax(acc_t_all)]
 			elif len(valid_idx)>0:
 				print("Not empty!")
-				best_min_idx = valid_idx[acc_arr[valid_idx].argmin()]
+				best_min_idx =  valid_idx[acc_arr[valid_idx].argmin()] #valid_idx[std_arr[valid_idx].argmin()]
 				best_acc_t = acc_t_all[best_min_idx]
 				selected_variable = combs[best_min_idx]
 
