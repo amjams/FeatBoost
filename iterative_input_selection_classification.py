@@ -223,11 +223,11 @@ class IISClassification():
 
 		# alpha intialization (for normalizing later)
 		if(self.loss == "adaboost"):
-			self.alpha = np.ones(self.max_number_of_features)
-			self.alpha_abs = np.ones(self.max_number_of_features)
+			self.alpha = np.ones(self.max_number_of_features+1)
+			self.alpha_abs = np.ones(self.max_number_of_features+1)
 		elif(self.loss == "binary_crossentropy" or self.loss == "softmax"):
-			self.alpha = np.ones((len(Y),self.max_number_of_features))
-			self.alpha_abs = np.ones((len(Y),self.max_number_of_features))
+			self.alpha = np.ones((len(Y),self.max_number_of_features+1))
+			self.alpha_abs = np.ones((len(Y),self.max_number_of_features+1))
 
 		# loop counter for reset
 		reset_count = 0
@@ -251,6 +251,7 @@ class IISClassification():
 			else:
 				if reset_count > 1:
 					self.reset = False
+
 					print("Infinite loop: No more resets this time!")
 					reset_count = 0  # reset the reset counter!
 				temp_str = [self.feature_names[i] for i in self.all_selected_variables]
@@ -304,11 +305,6 @@ class IISClassification():
 
 					print("Selected variables so far:")
 					print(self.selected_subset_)
-					#index = 0
-					#while(len(self.complete_subset_) < self.max_number_of_features):
-					#	if(self.all_ranking_[index] not in self.complete_subset_):
-					#		self.complete_subset_.append(self.all_ranking_[index])
-					#	index = index + 1
 
 
 				elif self.reset is True:
@@ -339,11 +335,7 @@ class IISClassification():
 					self.accuracy_ = self.accuracy_
 
 
-					#index = 0
-					#while(len(self.complete_subset_) < self.max_number_of_features):
-					#	if(self.all_ranking_[index] not in self.complete_subset_):
-					#		self.complete_subset_.append(self.all_ranking_[index])
-					#	index = index + 1
+
 				elif self.reset is True:
 					# re-set the sample weights and epsilon
 					print("\n\nATTENTION: Reset occured because of selected twice!")
@@ -357,8 +349,8 @@ class IISClassification():
 					
 					# undoing the iteration
 					iteration_number = iteration_number - 1
-					self.all_selected_variables= self.all_selected_variables[:-1]
-					self.accuracy_ = self.accuracy_[:-1]
+					self.all_selected_variables= self.all_selected_variables[:]
+					self.accuracy_ = self.accuracy_[:]
 
 
 	def _siso(self, X, Y, iteration_number):
