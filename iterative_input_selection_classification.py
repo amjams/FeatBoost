@@ -112,7 +112,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", best_min = False,reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", best_min = False,min_step=0,reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -133,6 +133,7 @@ class IISClassification():
 		self.reset = reset
 		self.cross_val = cross_val
 		self.best_min = best_min
+		self.min_step = min_step
 
 	def fit(self, X, Y):
 		"""
@@ -249,7 +250,7 @@ class IISClassification():
 					print("::::::::::::::::::::accuracy of MISO after iteration %02d is %05f" % (iteration_number,acc_t_miso))
 				iteration_number = iteration_number + 1
 			else:
-				if reset_count > 1:
+				if reset_count >= 1:
 					self.reset = False
 
 					print("Infinite loop: No more resets this time!")
@@ -313,9 +314,9 @@ class IISClassification():
 					stop_epsilon = self.epsilon+1  
 					if reset_count == 0:
 						self.global_sample_weights = np.ones(np.shape(Y))
-					elif reset_count ==1:
-						self.global_sample_weights = np.random.randn(len(Y))
-						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
+					elif reset_count ==1:   # We don't do this anymore
+						#self.global_sample_weights = np.random.randn(len(Y))
+						#self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
 					reset_count += 1
 
 					# undoing the iteration
@@ -424,17 +425,15 @@ class IISClassification():
 			if iteration_number == 1:
 				limit = 0
 			else:
-				limit = self.accuracy_[iteration_number-2]
+				limit = self.accuracy_[iteration_number-2]+self.min_step
 			acc_arr = np.array(acc_t_all)
 			std_arr = np.array(std_t_all)
 			valid_idx = np.where(acc_arr > limit)[0]
 			print(valid_idx)
 			if len(valid_idx)==0:
-				print("Empty")
 				best_acc_t = np.amax(acc_t_all)
 				selected_variable = combs[np.argmax(acc_t_all)]
 			elif len(valid_idx)>0:
-				print("Not empty!")
 				best_min_idx =  valid_idx[acc_arr[valid_idx].argmin()] #valid_idx[std_arr[valid_idx].argmin()]
 				best_acc_t = acc_t_all[best_min_idx]
 				selected_variable = combs[best_min_idx]
