@@ -315,8 +315,8 @@ class IISClassification():
 					if reset_count == 0:
 						self.global_sample_weights = np.ones(np.shape(Y))
 					elif reset_count ==1:   # We don't do this anymore
-						#self.global_sample_weights = np.random.randn(len(Y))
-						#self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
+						self.global_sample_weights = np.random.randn(len(Y))
+						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
 					reset_count += 1
 
 					# undoing the iteration
