@@ -11,9 +11,9 @@ from sklearn.model_selection import KFold, cross_val_predict
 from sklearn.metrics import accuracy_score, f1_score
 
 
-class IISClassification():
+class FeatBoostClassification():
 	"""
-		Iterative Input Selection For Classification Problems
+		FeatBoost For Classification Problems
 
 	    Parameters
 	    ----------
@@ -36,7 +36,7 @@ class IISClassification():
 
 		epsilon : int, Optional (default = 1e-18)
 			The threshold value which determines one of the stopping conditions
-			for Iterative Input Selection for Classification.
+			for FeatBoost.
 			Ideally this value needs to be extremely small. It could be negative.
 
 		max_number_of_features : int, Optional (default = 10)
@@ -57,9 +57,9 @@ class IISClassification():
 			If it takes two values as a list (e.g. [5 10]), it evaluates SISO
 			for 5 random variables selected from the top 10.
 
-		siso_order : int OR list  Optional (default=1)
+		siso_order : int  Optional (default=1)
 			Corresponds to the size of feature combinations evaluated at the SISO
-			step. If int, it's the upper bound. If list, it's [lower,upper]
+			step.
 
 		global_sample_weights : array, shape = [Y], Optional (default = None)
 			The initial weights of the sample set. The weights are updated in
@@ -70,11 +70,7 @@ class IISClassification():
 			updation of weights.
 			Options:
 			1) Softmax Loss(Categorical Cross-Entropy loss) = "softmax"
-			2) Binary Cross-Entropy loss = "binary_crossentropy"
-			3) Adaptive Boosting = "adaboost"
-
-			Note: The Binary Cross-Entropy Loss only works for Binary class
-			problems.
+			2) Adaptive Boosting = "adaboost"
 
 	    verbose : int, Optional (default=0)
 	        Controls verbosity of output:
@@ -103,7 +99,7 @@ class IISClassification():
 
 		residual_weights_ : array, shape = [max_number_of_features, Y]
 			Returns the updated weights of all the samples after performing
-			IIS.
+			FeatBoost.
 
 		siso_ranking_ : array, shape = [max_number_of_features, siso_ranking_size]
 			Returns the top siso_ranking_size number of features in each internal
@@ -112,7 +108,7 @@ class IISClassification():
 			iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", best_min = False,min_step=0,reset = False,nostop=False,slow_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False, fast_mode=False,metric='acc',xgb_importance='gain',learning_rate=1,cross_val=False,verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self.estimator = estimator
@@ -123,21 +119,22 @@ class IISClassification():
 		self.max_number_of_features = max_number_of_features
 		self.siso_ranking_size = siso_ranking_size
 		self.siso_order = siso_order
+		if(type(self.siso_ranking_size) is list):
+			assert self.siso_ranking_size[0] > self.siso_order, ("SISO order cannot be greater than the SISO ranking size.\nRead the documentation for more details")
+		else:
+			assert self.siso_ranking_size > self.siso_order, ("SISO order cannot be greater than the SISO ranking size.\nRead the documentation for more details")
 		self.loss = loss
 		self.verbose = verbose
-		self.nostop = nostop
-		self.slow_mode = slow_mode
+		self.fast_mode = fast_mode
 		self.metric = metric
 		self.learning_rate = learning_rate
 		self.xgb_importance = xgb_importance
 		self.reset = reset
 		self.cross_val = cross_val
-		self.best_min = best_min
-		self.min_step = min_step
 
 	def fit(self, X, Y):
 		"""
-        Fits the IISC method with the estimator as provided by the user.
+        Fits the FeatBoost method with the estimator as provided by the user.
 
         Parameters
         ----------
@@ -155,7 +152,7 @@ class IISClassification():
 
 	def transform(self, X):
 		"""
-		Reduces the columns of input X to the features selected by IISC.
+		Reduces the columns of input X to the features selected by FeatBoost.
 
         Parameters
         ----------
@@ -166,13 +163,13 @@ class IISClassification():
         -------
         X : array-like, shape = [n_samples, n_features_]
             The input matrix X's columns are reduced to the features selected by
-			IISC.
+			FeatBoost.
 		"""
 		return self._transform(X)
 
 	def fit_transform(self, X, Y):
 		"""
-		Fits IISC and then reduces the input X to the features selected by IISC.
+		Fits FeatBoost and then reduces the input X to the features selected by FeatBoost.
 
         Parameters
         ----------
@@ -185,7 +182,7 @@ class IISClassification():
         -------
         X : array-like, shape = [n_samples, n_features_]
             The input matrix X's columns are reduced to the features selected by
-			IISC.
+			FeatBoost.
 		"""
 		return self._fit_transform(X, Y)
 
@@ -196,8 +193,6 @@ class IISClassification():
 		subset.
 		"""
 		self.n_classes_ = len(np.unique(Y))
-		if (self.loss == "binary_crossentropy"):
-			assert self.n_classes_ == 2, ("Binary Cross-Entropy only works for Binary Class problems.\nRead the documentation for more details.")
 		self.feature_names = feature_names
 		# Give features a default name.
 		if self.feature_names is None:
@@ -226,7 +221,7 @@ class IISClassification():
 		if(self.loss == "adaboost"):
 			self.alpha = np.ones(self.max_number_of_features+1)
 			self.alpha_abs = np.ones(self.max_number_of_features+1)
-		elif(self.loss == "binary_crossentropy" or self.loss == "softmax"):
+		elif(self.loss == "softmax"):
 			self.alpha = np.ones((len(Y),self.max_number_of_features+1))
 			self.alpha_abs = np.ones((len(Y),self.max_number_of_features+1))
 
@@ -265,7 +260,7 @@ class IISClassification():
 					print("Evaluating MISO after iteration %02d" % (iteration_number))
 				# Check if the feature has already been selected i.e. stopping condition 3 as mentioned above.
 				#if selected_variable in self.all_selected_variables:
-				if all(x in self.all_selected_variables for x in selected_variable) and self.nostop is False:
+				if all(x in self.all_selected_variables for x in selected_variable):
 					repeated_variable = True
 				else:
 					# The selected feature is stored inside self.all_selected_variables.
@@ -284,7 +279,7 @@ class IISClassification():
 					if(reset_count > 0 and stop_epsilon > self.epsilon):
 						reset_count = 0  # reset the reset counter!
 						print("CONGRATURLATIONS: A reset was successful! The reset counter has been reset.")
-						
+
 					iteration_number = iteration_number + 1
 			# Stopping Condtion 1 -> Maximum number of features reached.
 			if iteration_number > self.max_number_of_features:
@@ -311,7 +306,7 @@ class IISClassification():
 				elif self.reset is True:
 					# re-set the sample weights and epsilon
 					print("\n\nATTENTION: Reset occured because of tolerance reached!")
-					stop_epsilon = self.epsilon+1  
+					stop_epsilon = self.epsilon+1
 					if reset_count == 0:
 						self.global_sample_weights = np.ones(np.shape(Y))
 					elif reset_count ==1:   # We don't do this anymore
@@ -347,7 +342,7 @@ class IISClassification():
 						self.global_sample_weights = np.random.randn(len(Y))
 						self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)
 					reset_count += 1
-					
+
 					# undoing the iteration
 					iteration_number = iteration_number - 1
 					self.all_selected_variables= self.all_selected_variables[:]
@@ -364,17 +359,11 @@ class IISClassification():
 		ranking, self.all_ranking_ = self._input_ranking(X, Y, iteration_number)
 		self.siso_ranking_[(iteration_number-1), :] = ranking
 		kf = KFold(n_splits=self.number_of_folds, shuffle=True,random_state=275)
-
-		# combination of features from the ranking up to siso_order size 
+		# combination of features from the ranking up to siso_order size
 		combs = []
-		if type(self.siso_order) is int:
-			for i in range(self.siso_order):
-				temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
-				combs.extend(temp_comb)
-		elif type(self.siso_order) is list:
-			for i in range(int(self.siso_order[0])-1,int(self.siso_order[1])):
-				temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
-				combs.extend(temp_comb)
+		for i in range(self.siso_order):
+			temp_comb = [list(x) for x in itertools.combinations(ranking, i+1)]
+			combs.extend(temp_comb)
 
 		acc_t_all = np.zeros((len(combs), 1))
 		std_t_all = np.zeros((len(combs), 1))
@@ -385,7 +374,7 @@ class IISClassification():
 			n = len(X_temp)
 			X_temp = X_temp.reshape(n, len(i))
 
-			if self.slow_mode is True:
+			if self.fast_mode is False:
 				X_temp = np.concatenate((X_temp,X[:,self.all_selected_variables]),axis=1)
 
 			count = 1
@@ -396,7 +385,7 @@ class IISClassification():
 				y_train, y_test = Y[train_index], Y[test_index]
 
 				# fit model according to mode
-				if self.slow_mode is True:
+				if self.fast_mode is False:
 					self.estimator[1].fit(X_train, np.ravel(y_train))
 				else:
 					self.estimator[1].fit(X_train, np.ravel(y_train),sample_weight=self.global_sample_weights[train_index])
@@ -415,28 +404,10 @@ class IISClassification():
 			std_t_all[idx_1, :] = np.std(acc_t_folds)
 			if(self.verbose > 1):
 				print("accuracy for combination %02d is = %05f" % (idx_1+1, np.mean(acc_t_folds)))
-		if self.best_min is False:
-			# regular
-			best_acc_t = np.amax(acc_t_all)
-			selected_variable = combs[np.argmax(acc_t_all)]
 
-		else:
-			# MINIMUM POSTIVE FEATURE
-			if iteration_number == 1:
-				limit = 0
-			else:
-				limit = self.accuracy_[iteration_number-2]+self.min_step
-			acc_arr = np.array(acc_t_all)
-			std_arr = np.array(std_t_all)
-			valid_idx = np.where(acc_arr > limit)[0]
-			print(valid_idx)
-			if len(valid_idx)==0:
-				best_acc_t = np.amax(acc_t_all)
-				selected_variable = combs[np.argmax(acc_t_all)]
-			elif len(valid_idx)>0:
-				best_min_idx =  valid_idx[acc_arr[valid_idx].argmin()] #valid_idx[std_arr[valid_idx].argmin()]
-				best_acc_t = acc_t_all[best_min_idx]
-				selected_variable = combs[best_min_idx]
+		# regular
+		best_acc_t = np.amax(acc_t_all)
+		selected_variable = combs[np.argmax(acc_t_all)]
 
 		if(self.verbose > 1):
 			print("Selected variable is %s with accuracy %05f" % (str(selected_variable), best_acc_t))
@@ -496,7 +467,7 @@ class IISClassification():
 				self.residual_weights_[(iteration_number-1), :] = self.residual_weights_[(iteration_number-2), :]
 				self.residual_weights_[(iteration_number-1), misclass_idx] = self.residual_weights_[(iteration_number-1), misclass_idx] + 1
 
-		elif(self.loss == "binary_crossentropy" or self.loss == "softmax"):
+		elif(self.loss == "softmax"):
 			# Determine the missclassified samples.
 			if(iteration_number == 1):
 				self.residual_weights_[(iteration_number-1), :] = 0
@@ -510,8 +481,7 @@ class IISClassification():
 			else:
 				prediction_probabiltiy = cross_val_predict(self.estimator[2], X, np.ravel(Y), cv=kf, method='predict_proba')
 			probability_weight = np.zeros(np.shape(Y))
-			# Generates One-Hot encodings for Multi-Class Problems or Assigns 0/1
-			#value for binary classification problems.
+			# Generates One-Hot encodings for Multi-Class Problems
 			for i in range(0, len(X)):
 				for j in range(0, len(labels)):
 					if(Y[i] == labels[j]):
@@ -520,13 +490,10 @@ class IISClassification():
 							probability_weight[i] = prediction_probabiltiy[i][j]
 						Y_class[i][j] = 1
 			log_bias = 1e-30
-			# Apply Binary Cross Entropy loss for Binary Classification Problems.
-			if(self.loss == "binary_crossentropy"):
-				alpha = -(Y * np.log(probability_weight+log_bias) + (1-np.array(Y))*np.log(1-probability_weight+log_bias))
-			# Apply Softmax for Multi-Class Problems.
-			elif(self.loss == "softmax"):
-				self.alpha_abs[:,iteration_number] = -self.learning_rate*np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
-				self.alpha[:,iteration_number] = np.divide(self.alpha_abs[:,iteration_number],self.alpha_abs[:,iteration_number-1])
+
+			# Loss function
+			self.alpha_abs[:,iteration_number] = -self.learning_rate*np.sum(Y_class*np.log(prediction_probabiltiy+log_bias), axis=1)
+			self.alpha[:,iteration_number] = np.divide(self.alpha_abs[:,iteration_number],self.alpha_abs[:,iteration_number-1])
 			self.global_sample_weights = self.global_sample_weights*self.alpha[:,iteration_number]
 			# re-normalize
 			self.global_sample_weights = self.global_sample_weights/np.sum(self.global_sample_weights)*len(Y)

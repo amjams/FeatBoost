@@ -1,1 +1,1 @@
-from .iterative_input_selection_classification import  IISClassification
+from .feat_boost import  FeatBoostClassification

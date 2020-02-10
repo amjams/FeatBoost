@@ -1,2 +1,2 @@
-# BIFS
-Boosted Iterative Input Selection
+# FeatBoost
+FeatBoost for classification problems.
