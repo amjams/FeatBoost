@@ -83,16 +83,17 @@ class FeatBoostClassification():
 		features. See the paper for more details.
 
 	fast_mode: Boolean, Optional (default=False)
-		In the default case of fast mode, for every SISO iteration, we attach
-		the new top ranked variables to the features selected so far
-		(with default weights) for evaluation. This is a comparatively slower
-		process.
-		If set to true, the new top ranked variables are evaluated alone with
+		If false, for every SISO iteration, we append
+		the new top ranked features to the features selected so far
+		(with default weights) for evaluation. 
+
+		If True, the new top ranked variables are evaluated alone with
 		each model being tested on a weighted sample distribution.
+		Could lead to premature stopping.
 
 	metric: String, Optional (default='acc')
 		The evaluation metric for selecting the best feature. The default metric
-		is classification accuracy.
+		is classification accuracy. 'f1' is the other available option.
 
 	xgb_importance: String, Optional (default='gain')
 		The XGBoost Importance Type field. Importance type can be defined as:
