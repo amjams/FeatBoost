@@ -13,7 +13,7 @@ from warnings import warn
 
 import numpy as np
 
-from sklearn.model_selection import KFold, cross_val_predict
+from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, f1_score
 
 
@@ -79,22 +79,36 @@ class FeatBoostClassification():
 		2) Adaptive Boosting = "adaboost"
 
 	reset: Boolean, Optional (default=False)
-
+		If set to True, the reset option allows the assignment of initial values
+		to sample weights when the boosting process fails to find new useful
+		features.
 
 	fast_mode: Boolean, Optional (default=False)
-
+		In the default case of fast mode, for every SISO iteration, we attach
+		the new top ranked variables to the features selected so far
+		(with default weights) for evaluation. This is a comparatively slower
+		process.
+		If set to true, the new top ranked variables are evaluated alone with
+		each model being tested on a weighted sample distribution.
 
 	metric: String, Optional (default='acc')
-
+		The evaluation metric for selecting the best feature. The default metric
+		is classification accuracy.
 
 	xgb_importance: String, Optional (default='gain')
-
+		The XGBoost Importance Type field. Importance type can be defined as:
+		‘weight’: the number of times a feature is used to split the data across
+				  all trees.
+		‘gain’: the average gain across all splits the feature is used in.
+		‘cover’: the average coverage across all splits the feature is used in.
+		‘total_gain’: the total gain across all splits the feature is used in.
+		‘total_cover’: the total coverage across all splits the feature is used
+					   in.
+		For more details, read the XGBoost documentation linked below.
+		<https://xgboost.readthedocs.io/en/latest/python/python_api.html>
 
 	learning_rate: float, Optional (default=1.0)
-
-
-	cross_val: Boolean, Optional (default=False)
-
+		The rate at which the weights are updated.
 
     verbose : int, Optional (default=0)
         Controls verbosity of output:
@@ -106,8 +120,6 @@ class FeatBoostClassification():
     ----------
 	selected_subset_ : array, max size = max_number_of_features
 		Returns an array of selected features.
-
-	complete_subset_ : array,
 
 	accuracy_ : array, shape = [selected_subset_].
 		Returns an array of the accuracy of the corresponding selected
@@ -134,7 +146,7 @@ class FeatBoostClassification():
 		iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False, fast_mode=False, metric='acc', xgb_importance='gain', learning_rate=1, cross_val=False, verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False, fast_mode=False, metric='acc', xgb_importance='gain', learning_rate=1, verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self._estimator = estimator
@@ -156,7 +168,6 @@ class FeatBoostClassification():
 		self._learning_rate = learning_rate
 		self._xgb_importance = xgb_importance
 		self._reset = reset
-		self._cross_val = cross_val
 
 	def fit(self, X, Y):
 		"""
@@ -502,10 +513,7 @@ class FeatBoostClassification():
 			# Gets all the labels.
 			labels = np.unique(np.ravel(Y))
 			Y_class = np.zeros((len(Y),len(labels)))
-			if self._cross_val is False:
-				prediction_probabiltiy = self._estimator[2].predict_proba(X)
-			else:
-				prediction_probabiltiy = cross_val_predict(self._estimator[2], X, np.ravel(Y), cv=kf, method='predict_proba')
+			prediction_probabiltiy = self._estimator[2].predict_proba(X)
 			probability_weight = np.zeros(np.shape(Y))
 			# Generates One-Hot encodings for Multi-Class Problems
 			for i in range(0, len(X)):
