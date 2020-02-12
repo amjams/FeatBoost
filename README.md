@@ -11,6 +11,7 @@ Install with pip
 
 # Usage
 Download FeatBoost and use it just as any other scikit-learn code.
+
 • fit(X, y)
 
 • transform(X)
