@@ -46,14 +46,14 @@ class FeatBoostClassification():
 		Ideally this value needs to be extremely small. It could be negative.
 
 	max_number_of_features : int, Optional (default = 10)
-		Corresponds to the maximum number of features allowed in a subset.
-		The algorithm does not return "max_number_of_features" amount of
-		features, but returns upto number of features upto this value.
+		The maximum number of features to be selected.
+		The algorithm returns a feature subset of size less than or qual to "max_number_of_features" amount of
 
-	siso_ranking_size : int OR list  Optional (default=5 or default=[5, 10])
-		Corresponds to the number of variables considered for the SISO step.
+	siso_ranking_size : int OR list  Optional (default=5)
+		The number of variables evaluated at each step.
 		The first 'siso_ranking_size' variables after Input Ranking are used
-		to determine the selected variable.
+		to determine the selected variable. Corresponds to parameters /
+		'm' in the paper.
 
 		-> int type:
 		If it takes one value (e.g. 5, the current default value), it
@@ -65,23 +65,22 @@ class FeatBoostClassification():
 
 	siso_order : int  Optional (default=1)
 		Corresponds to the size of feature combinations evaluated at the
-		SISO step.
+		SISO step. We recommend keeping this to 1. 
 
 	global_sample_weights : array, shape = [Y], Optional (default=None)
-		The initial weights of the sample set. The weights are updated in
-		each internal iteration using a novel feature boosting technique.
+		The initial weights of the sample set.
 
 	loss: String, Optional (default="softmax")
-		Specifies the loss function to be used which in turn affects the
-		updation of weights.
+		Specifies the loss function to be used, which in turn affects how 
+		sample weights are updates
 		Options:
 		1) Softmax Loss(Categorical Cross-Entropy loss) = "softmax"
 		2) Adaptive Boosting = "adaboost"
 
-	reset: Boolean, Optional (default=False)
+	reset: Boolean, Optional (default=True)
 		If set to True, the reset option allows the assignment of initial values
 		to sample weights when the boosting process fails to find new useful
-		features.
+		features. See the paper for more details.
 
 	fast_mode: Boolean, Optional (default=False)
 		In the default case of fast mode, for every SISO iteration, we attach
@@ -146,7 +145,7 @@ class FeatBoostClassification():
 		iteration.
 	"""
 
-	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = False, fast_mode=False, metric='acc', xgb_importance='gain', learning_rate=1, verbose=0):
+	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = True, fast_mode=False, metric='acc', xgb_importance='gain', learning_rate=1, verbose=0):
 		if type(estimator) is list:
 			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
 			self._estimator = estimator
