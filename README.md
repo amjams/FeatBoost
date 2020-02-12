@@ -3,6 +3,7 @@ This project showcases the Python implementation of FeatBoost for classification
 
 # Dependencies
 • numpy
+
 • scikit-learn
 
 # Installation
@@ -11,7 +12,9 @@ Install with pip
 # Usage
 Download FeatBoost and use it just as any other scikit-learn code.
 • fit(X, y)
+
 • transform(X)
+
 • fit_transform(X, y)
 
 # Examples
