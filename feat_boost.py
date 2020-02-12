@@ -97,12 +97,12 @@ class FeatBoostClassification():
 
 	xgb_importance: String, Optional (default='gain')
 		The XGBoost Importance Type field. Importance type can be defined as:
-		‘weight’: the number of times a feature is used to split the data across
+		'weight': the number of times a feature is used to split the data across
 				  all trees.
-		‘gain’: the average gain across all splits the feature is used in.
-		‘cover’: the average coverage across all splits the feature is used in.
-		‘total_gain’: the total gain across all splits the feature is used in.
-		‘total_cover’: the total coverage across all splits the feature is used
+		'gain': the average gain across all splits the feature is used in.
+		'cover': the average coverage across all splits the feature is used in.
+		'total_gain': the total gain across all splits the feature is used in.
+		'total_cover': the total coverage across all splits the feature is used
 					   in.
 		For more details, read the XGBoost documentation linked below.
 		<https://xgboost.readthedocs.io/en/latest/python/python_api.html>
