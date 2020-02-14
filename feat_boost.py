@@ -47,7 +47,7 @@ class FeatBoostClassification():
 
 	max_number_of_features : int, Optional (default = 10)
 		The maximum number of features to be selected.
-		The algorithm returns a feature subset of size less than or qual to "max_number_of_features" amount of
+		The algorithm returns a feature subset of size less than or equal to "max_number_of_features" amount of
 
 	siso_ranking_size : int OR list  Optional (default=5)
 		The number of variables evaluated at each step.
