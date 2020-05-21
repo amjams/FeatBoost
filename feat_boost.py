@@ -23,14 +23,14 @@ class FeatBoostClassification():
 
     Parameters
     ----------
-    estimator : object OR list of objects, List shape = 3 ([e1, e2, e3])
+    estimator : object OR list of objects, List shape = 2 ([e1, e2])
         A tree based estimator, with a 'fit' method that returns the
 		attribute 'feature_importances_'.
 		(In the case of XGBoost, 'get_scores()').
 		- If only one estimator is specified, the same estimator is used for
 		the Ranking step, the SISO step, and the MISO step.
-		- If a list of estimators is provided i.e. [e1, e2, e3], then e1 is
-		used for the Ranking step, e2 is used for the SISO step, e3 is used
+		- If a list of estimators is provided i.e. [e1, e2], then e1 is
+		used for the Ranking step, e2 is used for the SISO step, e1 is used
 		for the MISO step.
 		Estimators supported:
 		1) XGBoost Classifier
@@ -148,10 +148,10 @@ class FeatBoostClassification():
 
 	def __init__(self, estimator, number_of_folds=10, epsilon=1e-18, max_number_of_features=10, siso_ranking_size=5,siso_order=1, global_sample_weights=None, loss="softmax", reset = True, fast_mode=False, metric='acc', xgb_importance='gain', learning_rate=1, verbose=0):
 		if type(estimator) is list:
-			assert len(estimator) == 3, ("Length of list of estimators should always be equal to 3.\nRead the documentation for more details")
+			assert len(estimator) == 2, ("Length of list of estimators should always be equal to 2.\nRead the documentation for more details")
 			self._estimator = estimator
 		else:
-			self._estimator = [estimator, estimator, estimator]
+			self._estimator = [estimator,estimator]
 		self._number_of_folds = number_of_folds
 		self._epsilon = epsilon
 		self._max_number_of_features = max_number_of_features
@@ -477,8 +477,8 @@ class FeatBoostClassification():
 			count = count + 1
 		acc_t_miso = np.mean(acc_t_folds)
 		# Calculate the residual weights from fitting on the entire dataset.
-		self._estimator[2].fit(X, np.ravel(Y))
-		yHat_train_full = self._estimator[2].predict(X)
+		self._estimator[0].fit(X, np.ravel(Y))
+		yHat_train_full = self._estimator[0].predict(X)
 		if(self._loss == "adaboost"):
 			# Determine the missclassified samples.
 			acc_train_full = accuracy_score(Y, yHat_train_full)
@@ -513,7 +513,7 @@ class FeatBoostClassification():
 			# Gets all the labels.
 			labels = np.unique(np.ravel(Y))
 			Y_class = np.zeros((len(Y),len(labels)))
-			prediction_probabiltiy = self._estimator[2].predict_proba(X)
+			prediction_probabiltiy = self._estimator[0].predict_proba(X)
 			probability_weight = np.zeros(np.shape(Y))
 			# Generates One-Hot encodings for Multi-Class Problems
 			for i in range(0, len(X)):
