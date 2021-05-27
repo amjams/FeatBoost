@@ -4,7 +4,7 @@ To request a demo script, please contact Ahmad Alsahaf: a.m.j.a.alsahaf@rug.nl
 
 ## Usage
 ```shell
-pip install git+https://github.com/dunnkers/FeatBoost.git
+pip install git+https://github.com/amjams/FeatBoost.git
 ```
 
 ```python
