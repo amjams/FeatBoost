@@ -5,19 +5,18 @@ FeatBoost for Classification
 # Author: Ahmad Alsahaf <a.m.j.a.alsahaf@rug.nl>
 # Vikram Shenoy <shenoy.vi@husky.neu.edu>
 
+import itertools
 import math
 import sys
-import itertools
 import warnings
 from warnings import warn
 
 import numpy as np
-
-from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score, f1_score
+from sklearn.model_selection import KFold
 
 
-class FeatBoostClassification():
+class FeatBoostClassifier():
 	"""
 	FeatBoost For Classification Problems
 
