@@ -144,6 +144,9 @@ class FeatBoostClassifier(BaseEstimator):
                 iteration. Each row correpsonds to the number of internal iterations
                 and each column corresponds to the rank of the feature for that
                 iteration.
+
+        feature_importances_array_: BETA
+                Returns the feature importance scores after each iteration
     """
 
     def __init__(
@@ -253,6 +256,7 @@ class FeatBoostClassifier(BaseEstimator):
         """
         self._n_classes_ = len(np.unique(Y))
         self._feature_names = feature_names
+        self.feature_importances_array_ = np.empty((0,X.shape[1]))
         # Give features a default name.
         if self._feature_names is None:
             self._feature_names = []
@@ -669,6 +673,7 @@ class FeatBoostClassifier(BaseEstimator):
                 .get_score(importance_type=self._xgb_importance)
             )
             feature_importance = np.zeros(X.shape[1])
+            self.feature_importances_array_ = np.vstack((self.feature_importances_array_,feature_importance))
             for k, v in fscore.items():
                 feature_importance[int(k[1:])] = v
             feature_rank = np.argsort(feature_importance)
@@ -722,6 +727,7 @@ class FeatBoostClassifier(BaseEstimator):
                 sample_weight=np.nan_to_num(self._global_sample_weights),
             )
             feature_importance = self._estimator[0].feature_importances_
+            self.feature_importances_array_ = np.vstack((self.feature_importances_array_,feature_importance))
             feature_rank = np.argsort(feature_importance)
             all_ranking = feature_rank[::-1]
             if self._verbose > 1:
@@ -758,6 +764,7 @@ class FeatBoostClassifier(BaseEstimator):
                     ),
                     all_ranking,
                 )
+        
 
     def _transform(self, X):
         # Check if the fit(X, Y) function has been called prior to performing transform(X)
