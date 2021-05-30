@@ -14,7 +14,15 @@ def y():
     return np.array([0, 1, 0, 1, 0])
 
 
+def test_initialization():
+    """Should be able to initialize without changing default params."""
+    clf = ExtraTreesClassifier()
+    fs = FeatBoostClassifier(estimator=clf)
+    assert fs is not None
+
+
 def test_fit(X, y):
+    """Should be able to fit by setting `siso_ranking_size` to amount of dimensions p."""
     n, p = X.shape
 
     clf = ExtraTreesClassifier()
