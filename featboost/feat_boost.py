@@ -157,7 +157,6 @@ class FeatBoostClassifier(BaseEstimator):
         max_number_of_features=10,
         siso_ranking_size=5,
         siso_order=1,
-        global_sample_weights=None,
         loss="softmax",
         reset=True,
         fast_mode=False,
@@ -170,29 +169,29 @@ class FeatBoostClassifier(BaseEstimator):
             assert (
                 len(estimator) == 2
             ), "Length of list of estimators should always be equal to 2.\nRead the documentation for more details"
-            self._estimator = estimator
+            self.estimator = estimator
         else:
-            self._estimator = [estimator, estimator]
-        self._number_of_folds = number_of_folds
-        self._epsilon = epsilon
-        self._max_number_of_features = max_number_of_features
-        self._siso_ranking_size = siso_ranking_size
-        self._siso_order = siso_order
-        if type(self._siso_ranking_size) is list:
+            self.estimator = [estimator, estimator]
+        self.number_of_folds = number_of_folds
+        self.epsilon = epsilon
+        self.max_number_of_features = max_number_of_features
+        self.siso_ranking_size = siso_ranking_size
+        self.siso_order = siso_order
+        if type(self.siso_ranking_size) is list:
             assert (
-                self._siso_ranking_size[0] > self._siso_order
+                self.siso_ranking_size[0] > self.siso_order
             ), "SISO order cannot be greater than the SISO ranking size.\nRead the documentation for more details"
         else:
             assert (
-                self._siso_ranking_size > self._siso_order
+                self.siso_ranking_size > self.siso_order
             ), "SISO order cannot be greater than the SISO ranking size.\nRead the documentation for more details"
-        self._loss = loss
-        self._verbose = verbose
-        self._fast_mode = fast_mode
-        self._metric = metric
-        self._learning_rate = learning_rate
-        self._xgb_importance = xgb_importance
-        self._reset = reset
+        self.loss = loss
+        self.reset = reset
+        self.fast_mode = fast_mode
+        self.metric = metric
+        self.xgb_importance = xgb_importance
+        self.learning_rate = learning_rate
+        self.verbose = verbose
 
     def fit(self, X, Y):
         """
@@ -267,17 +266,17 @@ class FeatBoostClassifier(BaseEstimator):
         # Initialize sample weights.
         if self._global_sample_weights is None:
             self._global_sample_weights = np.ones(np.shape(Y))
-            self.residual_weights_ = np.zeros((self._max_number_of_features, len(Y)))
-            if type(self._siso_ranking_size) is int:
+            self.residual_weights_ = np.zeros((self.max_number_of_features, len(Y)))
+            if type(self.siso_ranking_size) is int:
                 self.siso_ranking_ = 99 * np.ones(
-                    (self._max_number_of_features, self._siso_ranking_size)
+                    (self.max_number_of_features, self.siso_ranking_size)
                 )
-            elif type(self._siso_ranking_size) is list:
+            elif type(self.siso_ranking_size) is list:
                 assert (
-                    len(self._siso_ranking_size) == 2
+                    len(self.siso_ranking_size) == 2
                 ), "siso_ranking_size of list type is of incompatible format. Please enter a list of the following type: \n siso_ranking_size=[5, 10] \n Read documentation for more details."
                 self.siso_ranking_ = 99 * np.ones(
-                    (self._max_number_of_features, self._siso_ranking_size[0])
+                    (self.max_number_of_features, self.siso_ranking_size[0])
                 )
 
         stop_epsilon = 10e6
@@ -287,29 +286,29 @@ class FeatBoostClassifier(BaseEstimator):
         repeated_variable = False
 
         # alpha intialization (for normalizing later)
-        if self._loss == "adaboost":
-            self._alpha = np.ones(self._max_number_of_features + 1)
-            self._alpha_abs = np.ones(self._max_number_of_features + 1)
-        elif self._loss == "softmax":
-            self._alpha = np.ones((len(Y), self._max_number_of_features + 1))
-            self._alpha_abs = np.ones((len(Y), self._max_number_of_features + 1))
+        if self.loss == "adaboost":
+            self._alpha = np.ones(self.max_number_of_features + 1)
+            self._alpha_abs = np.ones(self.max_number_of_features + 1)
+        elif self.loss == "softmax":
+            self._alpha = np.ones((len(Y), self.max_number_of_features + 1))
+            self._alpha_abs = np.ones((len(Y), self.max_number_of_features + 1))
 
         # loop counter for reset
         reset_count = 0
         while (
-            stop_epsilon > self._epsilon
-            and iteration_number <= self._max_number_of_features
+            stop_epsilon > self.epsilon
+            and iteration_number <= self.max_number_of_features
             and repeated_variable is False
         ):
             if iteration_number == 1:
-                if self._verbose > 0:
+                if self.verbose > 0:
                     print(
                         "\n\n\n\n\n\nRanking features iteration %02d"
                         % (iteration_number)
                     )
                 # Perform Single Input Single Output (SISO) for iteration 1.
                 selected_variable, best_acc_t = self._siso(X, Y, iteration_number)
-                if self._verbose > 1:
+                if self.verbose > 1:
                     print("Evaluating MISO after iteration %02d" % (iteration_number))
                 # The selected feature is stored inside self._all_selected_variables.
                 self._all_selected_variables.extend(selected_variable)
@@ -319,7 +318,7 @@ class FeatBoostClassifier(BaseEstimator):
                 )
                 # Accuracy of selected feature is stored in accuracy_.
                 self.accuracy_.append(acc_t_miso)
-                if self._verbose > 1:
+                if self.verbose > 1:
                     print(
                         "::::::::::::::::::::accuracy of MISO after iteration %02d is %05f"
                         % (iteration_number, acc_t_miso)
@@ -327,14 +326,14 @@ class FeatBoostClassifier(BaseEstimator):
                 iteration_number = iteration_number + 1
             else:
                 if reset_count >= 1:
-                    self._reset = False
+                    self.reset = False
 
                     print("Infinite loop: No more resets this time!")
                     reset_count = 0  # reset the reset counter!
                 temp_str = [
                     self._feature_names[i] for i in self._all_selected_variables
                 ]
-                if self._verbose > 0:
+                if self.verbose > 0:
                     print(
                         "\n\n\n\n\nselected variable thus far:\n%s"
                         % "\n".join(temp_str)
@@ -342,7 +341,7 @@ class FeatBoostClassifier(BaseEstimator):
                     print("Ranking features iteration %02d" % (iteration_number))
                 # Perform Single Input Single Output (SISO) for subsequent iterations.
                 selected_variable, best_acc_t = self._siso(X, Y, iteration_number)
-                if self._verbose > 1:
+                if self.verbose > 1:
                     print("Evaluating MISO after iteration %02d" % (iteration_number))
                 # Check if the feature has already been selected i.e. stopping condition 3 as mentioned above.
                 # if selected_variable in self._all_selected_variables:
@@ -365,12 +364,12 @@ class FeatBoostClassifier(BaseEstimator):
                         self.accuracy_[iteration_number - 1]
                         - self.accuracy_[iteration_number - 2]
                     )
-                    if self._verbose > 1:
+                    if self.verbose > 1:
                         print(
                             "::::::::::::::::::::accuracy of MISO after iteration %02d is %05f"
                             % (iteration_number, acc_t_miso)
                         )
-                    if reset_count > 0 and stop_epsilon > self._epsilon:
+                    if reset_count > 0 and stop_epsilon > self.epsilon:
                         reset_count = 0  # reset the reset counter!
                         print(
                             "CONGRATURLATIONS: A reset was successful! The reset counter has been reset."
@@ -378,19 +377,19 @@ class FeatBoostClassifier(BaseEstimator):
 
                     iteration_number = iteration_number + 1
             # Stopping Condtion 1 -> Maximum number of features reached.
-            if iteration_number > self._max_number_of_features:
-                if self._verbose > 0:
+            if iteration_number > self.max_number_of_features:
+                if self.verbose > 0:
                     print(
                         "Selection stopped: Maximum number of iteration %02d has been reached."
-                        % (self._max_number_of_features)
+                        % (self.max_number_of_features)
                     )
                 self.stopping_condition_ = "max_number_of_features_reached"
                 self.selected_subset_ = self._all_selected_variables
 
             # Stopping Condtion 2 -> epsilon value falls below the threshold.
-            if stop_epsilon <= self._epsilon:
-                if self._reset is False:
-                    if self._verbose > 0:
+            if stop_epsilon <= self.epsilon:
+                if self.reset is False:
+                    if self.verbose > 0:
                         print("Selection stopped: Tolerance has been reached.")
                     print(
                         "Stopping Condition triggered at iteration number: %d"
@@ -405,10 +404,10 @@ class FeatBoostClassifier(BaseEstimator):
                     print(self.selected_subset_)
 
                 # Reset condition triggered
-                elif self._reset is True:
+                elif self.reset is True:
                     # re-set the sample weights and epsilon
                     print("\n\nATTENTION: Reset occured because of tolerance reached!")
-                    stop_epsilon = self._epsilon + 1
+                    stop_epsilon = self.epsilon + 1
                     if reset_count == 0:
                         self._global_sample_weights = np.ones(np.shape(Y))
                     elif reset_count == 1:  # We don't do this anymore
@@ -427,8 +426,8 @@ class FeatBoostClassifier(BaseEstimator):
 
             # Stopping Condtion 3 -> A specific feature has been already selected previously.
             if repeated_variable:
-                if self._reset is False:
-                    if self._verbose > 0:
+                if self.reset is False:
+                    if self.verbose > 0:
                         print("Selection stopped: A variable has been selected twice.")
                     print(
                         "Stopping Condition triggered at iteration number: %d"
@@ -439,7 +438,7 @@ class FeatBoostClassifier(BaseEstimator):
                     self.complete_subset_ = self._all_selected_variables[:]
                     self.accuracy_ = self.accuracy_
 
-                elif self._reset is True:
+                elif self.reset is True:
                     # re-set the sample weights and epsilon
                     print("\n\nATTENTION: Reset occured because of selected twice!")
                     repeated_variable = False
@@ -468,17 +467,17 @@ class FeatBoostClassifier(BaseEstimator):
         # Get a ranking of features based on the estimator.
         ranking, self.all_ranking_ = self._input_ranking(X, Y, iteration_number)
         self.siso_ranking_[(iteration_number - 1), :] = ranking
-        kf = KFold(n_splits=self._number_of_folds, shuffle=True, random_state=275)
+        kf = KFold(n_splits=self.number_of_folds, shuffle=True, random_state=275)
         # Combination of features from the ranking up to siso_order size
         combs = []
-        for i in range(self._siso_order):
+        for i in range(self.siso_order):
             temp_comb = [list(x) for x in itertools.combinations(ranking, i + 1)]
             combs.extend(temp_comb)
 
         acc_t_all = np.zeros((len(combs), 1))
         std_t_all = np.zeros((len(combs), 1))
         for idx_1, i in enumerate(combs):
-            if self._verbose > 1:
+            if self.verbose > 1:
                 print(
                     "...Evaluating SISO combination %02d which is %s"
                     % (idx_1 + 1, str(i))
@@ -487,41 +486,41 @@ class FeatBoostClassifier(BaseEstimator):
             n = len(X_temp)
             X_temp = X_temp.reshape(n, len(i))
 
-            if self._fast_mode is False:
+            if self.fast_mode is False:
                 X_temp = np.concatenate(
                     (X_temp, X[:, self._all_selected_variables]), axis=1
                 )
 
             count = 1
-            acc_t_folds = np.zeros((self._number_of_folds, 1))
+            acc_t_folds = np.zeros((self.number_of_folds, 1))
             # Compute accuracy for each SISO input.
             for train_index, test_index in kf.split(X_temp):
                 X_train, X_test = X_temp[train_index], X_temp[test_index]
                 y_train, y_test = Y[train_index], Y[test_index]
 
                 # fit model according to mode
-                if self._fast_mode is False:
-                    self._estimator[1].fit(X_train, np.ravel(y_train))
+                if self.fast_mode is False:
+                    self.estimator[1].fit(X_train, np.ravel(y_train))
                 else:
-                    self._estimator[1].fit(
+                    self.estimator[1].fit(
                         X_train,
                         np.ravel(y_train),
                         sample_weight=self._global_sample_weights[train_index],
                     )
 
-                yHat_test = self._estimator[1].predict(X_test)
+                yHat_test = self.estimator[1].predict(X_test)
                 # calculate the required metric
-                if self._metric == "acc":
+                if self.metric == "acc":
                     acc_t = accuracy_score(y_test, yHat_test)
-                elif self._metric == "f1":
+                elif self.metric == "f1":
                     acc_t = f1_score(y_test, yHat_test, average="weighted")
-                if self._verbose > 1:
+                if self.verbose > 1:
                     print("Fold %02d accuracy = %05f" % (count, acc_t))
                 acc_t_folds[count - 1, :] = acc_t
                 count = count + 1
             acc_t_all[idx_1, :] = np.mean(acc_t_folds)
             std_t_all[idx_1, :] = np.std(acc_t_folds)
-            if self._verbose > 1:
+            if self.verbose > 1:
                 print(
                     "accuracy for combination %02d is = %05f"
                     % (idx_1 + 1, np.mean(acc_t_folds))
@@ -531,7 +530,7 @@ class FeatBoostClassifier(BaseEstimator):
         best_acc_t = np.amax(acc_t_all)
         selected_variable = combs[np.argmax(acc_t_all)]
 
-        if self._verbose > 1:
+        if self.verbose > 1:
             print(
                 "Selected variable is %s with accuracy %05f"
                 % (str(selected_variable), best_acc_t)
@@ -544,30 +543,30 @@ class FeatBoostClassifier(BaseEstimator):
         time and also computes the updated weights of the samples.
         """
         warnings.filterwarnings("ignore")
-        kf = KFold(n_splits=self._number_of_folds, shuffle=True, random_state=275)
+        kf = KFold(n_splits=self.number_of_folds, shuffle=True, random_state=275)
         count = 1
-        acc_t_folds = np.zeros((self._number_of_folds, 1))
+        acc_t_folds = np.zeros((self.number_of_folds, 1))
         # Compute the accuracy of the selected features one addition at a time.
         for train_index, test_index in kf.split(X):
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = Y[train_index], Y[test_index]
-            self._estimator[1].fit(X_train, np.ravel(y_train))  # changed estimator!
-            yHat_test = self._estimator[1].predict(X_test)
+            self.estimator[1].fit(X_train, np.ravel(y_train))  # changed estimator!
+            yHat_test = self.estimator[1].predict(X_test)
             # find performance based on selected metric
-            if self._metric == "acc":
+            if self.metric == "acc":
                 acc_t = accuracy_score(y_test, yHat_test)
-            elif self._metric == "f1":
+            elif self.metric == "f1":
                 acc_t = f1_score(y_test, yHat_test, average="weighted")
 
-            if self._verbose > 1:
+            if self.verbose > 1:
                 print("Fold %02d accuracy = %05f" % (count, acc_t))
             acc_t_folds[count - 1, :] = acc_t
             count = count + 1
         acc_t_miso = np.mean(acc_t_folds)
         # Calculate the residual weights from fitting on the entire dataset.
-        self._estimator[0].fit(X, np.ravel(Y))
-        yHat_train_full = self._estimator[0].predict(X)
-        if self._loss == "adaboost":
+        self.estimator[0].fit(X, np.ravel(Y))
+        yHat_train_full = self.estimator[0].predict(X)
+        if self.loss == "adaboost":
             # Determine the missclassified samples.
             acc_train_full = accuracy_score(Y, yHat_train_full)
             err = 1 - acc_train_full
@@ -610,7 +609,7 @@ class FeatBoostClassifier(BaseEstimator):
                     self.residual_weights_[(iteration_number - 1), misclass_idx] + 1
                 )
 
-        elif self._loss == "softmax":
+        elif self.loss == "softmax":
             # Determine the missclassified samples.
             if iteration_number == 1:
                 self.residual_weights_[(iteration_number - 1), :] = 0
@@ -621,7 +620,7 @@ class FeatBoostClassifier(BaseEstimator):
             # Gets all the labels.
             labels = np.unique(np.ravel(Y))
             Y_class = np.zeros((len(Y), len(labels)))
-            prediction_probabiltiy = self._estimator[0].predict_proba(X)
+            prediction_probabiltiy = self.estimator[0].predict_proba(X)
             probability_weight = np.zeros(np.shape(Y))
             # Generates One-Hot encodings for Multi-Class Problems
             for i in range(0, len(X)):
@@ -634,7 +633,7 @@ class FeatBoostClassifier(BaseEstimator):
             log_bias = 1e-30
 
             # Loss function
-            self._alpha_abs[:, iteration_number] = -self._learning_rate * np.sum(
+            self._alpha_abs[:, iteration_number] = -self.learning_rate * np.sum(
                 Y_class * np.log(prediction_probabiltiy + log_bias), axis=1
             )
             self._alpha[:, iteration_number] = np.divide(
@@ -662,15 +661,15 @@ class FeatBoostClassifier(BaseEstimator):
         SISO evaluation.
         """
         # Perform an initial ranking of features using the given estimator.
-        check_estimator = str(self._estimator[0])
+        check_estimator = str(self.estimator[0])
         if "XGBClassifier" in check_estimator:
-            self._estimator[0].fit(
+            self.estimator[0].fit(
                 X, np.ravel(Y), sample_weight=self._global_sample_weights
             )
             fscore = (
-                self._estimator[0]
+                self.estimator[0]
                 .get_booster()
-                .get_score(importance_type=self._xgb_importance)
+                .get_score(importance_type=self.xgb_importance)
             )
             feature_importance = np.zeros(X.shape[1])
             self.feature_importances_array_ = np.vstack(
@@ -680,12 +679,12 @@ class FeatBoostClassifier(BaseEstimator):
                 feature_importance[int(k[1:])] = v
             feature_rank = np.argsort(feature_importance)
             all_ranking = feature_rank[::-1]
-            if self._verbose > 1:
+            if self.verbose > 1:
                 print("feature importances of all available feature:")
             count = 0
-            if type(self._siso_ranking_size) is int:
-                for i in range(-1, -1 * self._siso_ranking_size - 1, -1):
-                    if self._verbose > 1:
+            if type(self.siso_ranking_size) is int:
+                for i in range(-1, -1 * self.siso_ranking_size - 1, -1):
+                    if self.verbose > 1:
                         print(
                             "%s   %05f"
                             % (
@@ -696,16 +695,16 @@ class FeatBoostClassifier(BaseEstimator):
                     count = count + 1
                 # Return the 'siso_ranking_size' ranked features to perform SISO.
                 return (
-                    feature_rank[: -1 * self._siso_ranking_size - 1 : -1],
+                    feature_rank[: -1 * self.siso_ranking_size - 1 : -1],
                     all_ranking,
                 )
 
-            elif type(self._siso_ranking_size) is list:
+            elif type(self.siso_ranking_size) is list:
                 assert (
-                    len(self._siso_ranking_size) == 2
+                    len(self.siso_ranking_size) == 2
                 ), "siso_ranking_size of list type is of incompatible format. Please enter a list of the following type: \n siso_ranking_size=[5, 10] \n Read documentation for more details."
-                for i in range(-1, -1 * self._siso_ranking_size[1] - 1, -1):
-                    if self._verbose > 1:
+                for i in range(-1, -1 * self.siso_ranking_size[1] - 1, -1):
+                    if self.verbose > 1:
                         print(
                             "%s   %05f"
                             % (
@@ -715,30 +714,30 @@ class FeatBoostClassifier(BaseEstimator):
                         )
                     count = count + 1
                 # Return the 'siso_ranking_size' ranked features to perform SISO.
-                feature_rank = feature_rank[: -1 * self._siso_ranking_size[1] - 1 : -1]
+                feature_rank = feature_rank[: -1 * self.siso_ranking_size[1] - 1 : -1]
                 return (
                     np.random.choice(
-                        feature_rank, self._siso_ranking_size[0], replace=False
+                        feature_rank, self.siso_ranking_size[0], replace=False
                     ),
                     all_ranking,
                 )
         else:
-            self._estimator[0].fit(
+            self.estimator[0].fit(
                 np.nan_to_num(X),
                 np.nan_to_num(np.ravel(Y)),
                 sample_weight=np.nan_to_num(self._global_sample_weights),
             )
-            feature_importance = self._estimator[0].feature_importances_
+            feature_importance = self.estimator[0].feature_importances_
             self.feature_importances_array_ = np.vstack(
                 (self.feature_importances_array_, feature_importance)
             )
             feature_rank = np.argsort(feature_importance)
             all_ranking = feature_rank[::-1]
-            if self._verbose > 1:
+            if self.verbose > 1:
                 print("feature importances of all available feature:")
-            if type(self._siso_ranking_size) is int:
-                for i in range(-1, -1 * self._siso_ranking_size - 1, -1):
-                    if self._verbose > 1:
+            if type(self.siso_ranking_size) is int:
+                for i in range(-1, -1 * self.siso_ranking_size - 1, -1):
+                    if self.verbose > 1:
                         print(
                             "%s   %05f"
                             % (
@@ -747,13 +746,13 @@ class FeatBoostClassifier(BaseEstimator):
                             )
                         )
                 return (
-                    feature_rank[: -1 * self._siso_ranking_size - 1 : -1],
+                    feature_rank[: -1 * self.siso_ranking_size - 1 : -1],
                     all_ranking,
                 )
-            elif type(self._siso_ranking_size) is list:
-                assert len(self._siso_ranking_size) == 2, "/* SISO CONDITION */"
-                for i in range(-1, -1 * self._siso_ranking_size[1] - 1, -1):
-                    if self._verbose > 1:
+            elif type(self.siso_ranking_size) is list:
+                assert len(self.siso_ranking_size) == 2, "/* SISO CONDITION */"
+                for i in range(-1, -1 * self.siso_ranking_size[1] - 1, -1):
+                    if self.verbose > 1:
                         print(
                             "%s   %05f"
                             % (
@@ -761,10 +760,10 @@ class FeatBoostClassifier(BaseEstimator):
                                 feature_importance[feature_rank[i]],
                             )
                         )
-                feature_rank = feature_rank[: -1 * self._siso_ranking_size[1] - 1 : -1]
+                feature_rank = feature_rank[: -1 * self.siso_ranking_size[1] - 1 : -1]
                 return (
                     np.random.choice(
-                        feature_rank, self._siso_ranking_size[0], replace=False
+                        feature_rank, self.siso_ranking_size[0], replace=False
                     ),
                     all_ranking,
                 )
