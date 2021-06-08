@@ -135,10 +135,6 @@ class FeatBoostClassifier(BaseEstimator):
                 3) variable_selected_twice -> If a variable has already been
                                                                           selected, feature selection stops.
 
-        residual_weights_ : array, shape = [max_number_of_features, Y]
-                Returns the updated weights of all the samples after performing
-                FeatBoost.
-
         siso_ranking_ : array, shape = [max_number_of_features, siso_ranking_size]
                 Returns the top siso_ranking_size number of features in each internal
                 iteration. Each row correpsonds to the number of internal iterations
@@ -266,7 +262,6 @@ class FeatBoostClassifier(BaseEstimator):
         # Initialize sample weights.
         if self._global_sample_weights is None:
             self._global_sample_weights = np.ones(np.shape(Y))
-            self.residual_weights_ = np.zeros((self.max_number_of_features, len(Y)))
             if type(self.siso_ranking_size) is int:
                 self.siso_ranking_ = 99 * np.ones(
                     (self.max_number_of_features, self.siso_ranking_size)
@@ -597,26 +592,8 @@ class FeatBoostClassifier(BaseEstimator):
             )
             print("mean of weights = %02f" % np.mean(self._global_sample_weights))
             print(self._global_sample_weights[0:10])
-            if iteration_number == 1:
-                self.residual_weights_[(iteration_number - 1), misclass_idx] = (
-                    self.residual_weights_[(iteration_number - 1), misclass_idx] + 1
-                )
-            else:
-                self.residual_weights_[
-                    (iteration_number - 1), :
-                ] = self.residual_weights_[(iteration_number - 2), :]
-                self.residual_weights_[(iteration_number - 1), misclass_idx] = (
-                    self.residual_weights_[(iteration_number - 1), misclass_idx] + 1
-                )
 
         elif self.loss == "softmax":
-            # Determine the missclassified samples.
-            if iteration_number == 1:
-                self.residual_weights_[(iteration_number - 1), :] = 0
-            else:
-                self.residual_weights_[
-                    (iteration_number - 1), :
-                ] = self._global_sample_weights
             # Gets all the labels.
             labels = np.unique(np.ravel(Y))
             Y_class = np.zeros((len(Y), len(labels)))
@@ -649,10 +626,6 @@ class FeatBoostClassifier(BaseEstimator):
                 / np.sum(self._global_sample_weights)
                 * len(Y)
             )
-            # self._global_sample_weights = np.ones(np.shape(Y))*self._alpha[:,iteration_number]
-            self.residual_weights_[
-                (iteration_number - 1), :
-            ] = self._global_sample_weights
         return acc_t_miso
 
     def _input_ranking(self, X, Y, iteration_number):
