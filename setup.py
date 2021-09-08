@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="featboost",
-    version="1.0",
+    version="1.1",
     packages=find_packages(include=["featboost", "featboost.*"]),
     author="Ahmad Alsahaf",
     install_requires=[
