@@ -8,7 +8,7 @@ setup(
     packages=find_packages(include=["featboost", "featboost.*"]),
     author="Ahmad Alsahaf",
     install_requires=[
-        "numpy==1.20.2",
+        "numpy==1.22.0",
         "scikit-learn==0.24.2",
     ],
     setup_requires=["black==21.4b2", "pytest-runner==5.3.0"],
