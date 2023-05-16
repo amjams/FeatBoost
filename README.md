@@ -1,9 +1,18 @@
 # FeatBoost
 Python implementation of FeatBoost.
 
+## Demo
+[![Open In Colab](https://colab.research.google.com/drive/1eEySuIAJzmlNOChfLwEqJFKKbGNVYMwJ?usp=sharing)
+
 ## Usage
 ```shell
 pip install git+https://github.com/amjams/FeatBoost.git
+```
+
+Or just clone the repo (recommended for now)
+
+```shell
+git clone https://github.com/amjams/FeatBoost.git
 ```
 
 ```python
