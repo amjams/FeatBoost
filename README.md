@@ -1,7 +1,8 @@
 # FeatBoost
-Python implementation of FeatBoost.
+Python implementation of FeatBoost. See the (paper)[https://doi.org/10.1016/j.eswa.2021.115895] for details.
 
 ## Demo
+This demo compares featboost to feature ranking of XGBoost on the Madelon benchmark dataset
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1eEySuIAJzmlNOChfLwEqJFKKbGNVYMwJ)
 
 ## Usage
