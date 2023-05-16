@@ -16,6 +16,7 @@ Or just clone the repo (recommended for now)
 git clone https://github.com/amjams/FeatBoost.git
 ```
 
+Basic usage of the model (see the demo above for more details).
 ```python
 from featboost import FeatBoostClassifier
 
