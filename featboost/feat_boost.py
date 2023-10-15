@@ -13,7 +13,7 @@ from warnings import warn
 
 import numpy as np
 from sklearn.base import BaseEstimator
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef
 from sklearn.model_selection import KFold
 
 
@@ -94,6 +94,7 @@ class FeatBoostClassifier(BaseEstimator):
         metric: String, Optional (default='acc')
                 The evaluation metric for selecting the best feature. The default metric
                 is classification accuracy. 'f1' is the other available option.
+                'mcc' or matthews correlation coefficient can be used for binary cases.
 
         xgb_importance: String, Optional (default='gain')
                 The XGBoost Importance Type field. Importance type can be defined as:
@@ -514,6 +515,8 @@ class FeatBoostClassifier(BaseEstimator):
                     acc_t = accuracy_score(y_test, yHat_test)
                 elif self.metric == "f1":
                     acc_t = f1_score(y_test, yHat_test, average="weighted")
+                elif self.metric == 'mcc':
+                    acc_t = matthews_corrcoef(y_test, yHat_test)
                 if self.verbose > 1:
                     print("Fold %02d accuracy = %05f" % (count, acc_t))
                 acc_t_folds[count - 1, :] = acc_t
@@ -557,7 +560,8 @@ class FeatBoostClassifier(BaseEstimator):
                 acc_t = accuracy_score(y_test, yHat_test)
             elif self.metric == "f1":
                 acc_t = f1_score(y_test, yHat_test, average="weighted")
-
+            elif self.metric == 'mcc':
+                    acc_t = matthews_corrcoef(y_test, yHat_test)
             if self.verbose > 1:
                 print("Fold %02d accuracy = %05f" % (count, acc_t))
             acc_t_folds[count - 1, :] = acc_t
