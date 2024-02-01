@@ -9,7 +9,7 @@ setup(
     author="Ahmad Alsahaf",
     install_requires=[
         "numpy==1.20.2",
-        "scikit-learn==0.24.2",
+        "scikit-learn==1.0.1",
     ],
     setup_requires=["black==21.4b2", "pytest-runner==5.3.0"],
     tests_require=["pytest==6.2.3"],
